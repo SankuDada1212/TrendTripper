@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    /* Vibrant red - fiery energy */
+    --primary: 0 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 10 90% 60%;
+
+    /* Bright orange */
+    --secondary: 25 95% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Electric yellow */
+    --accent: 45 100% 55%;
+    --accent-foreground: 0 0% 10%;
+
+    --muted: 20 15% 92%;
+    --muted-foreground: 20 10% 45%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 20% 88%;
+    --input: 20 15% 90%;
+    --ring: 0 85% 55%;
+
+    --radius: 0.75rem;
+
+    /* Bold energetic gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(0 85% 55%), hsl(25 95% 55%));
+    --gradient-sunset: linear-gradient(135deg, hsl(25 95% 55%), hsl(45 100% 55%));
+    --gradient-ocean: linear-gradient(180deg, hsl(0 85% 55%), hsl(10 80% 45%));
+    
+    /* Shadows with theme colors */
+    --shadow-card: 0 4px 20px -2px hsl(0 85% 55% / 0.1);
+    --shadow-hover: 0 8px 30px -4px hsl(0 85% 55% / 0.2);
+    --shadow-glow: 0 0 40px hsl(10 90% 60% / 0.3);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 5% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 5% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 85% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 10 90% 65%;
+
+    --secondary: 25 95% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 45 100% 60%;
+    --accent-foreground: 0 0% 10%;
+
+    --muted: 0 5% 18%;
+    --muted-foreground: 0 5% 60%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 5% 20%;
+    --input: 0 5% 18%;
+    --ring: 0 85% 60%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(0 85% 60%), hsl(25 95% 60%));
+    --gradient-sunset: linear-gradient(135deg, hsl(25 95% 60%), hsl(45 100% 60%));
+    --gradient-ocean: linear-gradient(180deg, hsl(0 85% 55%), hsl(10 80% 45%));
+    
+    --shadow-card: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
+    --shadow-hover: 0 8px 30px -4px hsl(0 85% 60% / 0.3);
+    --shadow-glow: 0 0 40px hsl(10 90% 65% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Card variants */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-[0_8px_30px_-4px_hsl(var(--primary)/0.2)] hover:-translate-y-1;
+  }
+
+  .card-glass {
+    @apply bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  /* Gradient backgrounds */
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-sunset {
+    background: var(--gradient-sunset);
+  }
+
+  .gradient-ocean {
+    background: var(--gradient-ocean);
+  }
+
+  /* Text gradients */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent;
+  }
+
+  /* Button animations */
+  .btn-scale {
+    @apply transition-transform duration-200 active:scale-95;
+  }
+
+  /* Floating animation for SOS button */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Shimmer loading effect */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(
+      to right,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 1000px 100%;
+  }
+}

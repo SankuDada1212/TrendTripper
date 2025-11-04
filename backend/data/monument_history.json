@@ -1,0 +1,482 @@
+{
+"Gateway of India": [
+{"year": 1911, "event": "Foundation stone laid to commemorate the visit of King George V and Queen Mary"},
+{"year": 1924, "event": "Monument inaugurated and opened to the public"},
+{"year": 1948, "event": "Last British troops ceremonially departed India through the Gateway"},
+{"year": 2005, "event": "Major restoration and conservation project undertaken"}
+],
+"Elephanta Caves": [
+{"year": 500, "event": "Rock-cut cave complex and major sculptures created (approximate origin)"},
+{"year": 1534, "event": "Portuguese arrived in the region, altering access to the island"},
+{"year": 1818, "event": "British archaeological survey documented the caves"},
+{"year": 1987, "event": "Declared a UNESCO World Heritage Site"}
+],
+"Chhatrapati Shivaji Maharaj Terminus": [
+{"year": 1878, "event": "Construction of the Victoria Terminus began (designed by Frederick William Stevens)"},
+{"year": 1888, "event": "Official completion and opening as a major railway terminus"},
+{"year": 1996, "event": "Continued modernization and electrification of services"},
+{"year": 2004, "event": "Designated a UNESCO World Heritage Site for its Victorian Gothic architecture"}
+],
+"Marine Drive": [
+{"year": 1920, "event": "Major land reclamation and sea-front development began along the bay"},
+{"year": 1930, "event": "Promenade and sea-wall completed, establishing the curved Marine Drive layout"},
+{"year": 1950, "event": "Became a popular public promenade and social gathering spot"},
+{"year": 2015, "event": "City-led beautification and pedestrian improvements implemented"}
+],
+"Siddhivinayak Temple": [
+{"year": 1801, "event": "Original small shrine to Lord Ganesha established at Prabhadevi site"},
+{"year": 1960, "event": "Temple complex expanded and renovated to accommodate growing devotees"},
+{"year": 1999, "event": "Major redevelopment and addition of facilities for pilgrims"},
+{"year": 2010, "event": "Became one of the city’s most visited religious landmarks with increased infrastructure"}
+],
+"Haji Ali Dargah": [
+{"year": 1431, "event": "Built over a tomb by Sayyid Peer Haji Ali Shah Bukhari on a tidal islet"},
+{"year": 1700, "event": "Became an established centre for Sufi pilgrimage and local devotion"},
+{"year": 1940, "event": "Underwent repair and maintenance after storm damage"},
+{"year": 2003, "event": "Conservation work carried out to protect the structure and walkway"}
+],
+"Juhu Beach": [
+{"year": 1940, "event": "Area began developing as a suburban seaside destination for Bombay residents"},
+{"year": 1950, "event": "Rise of Bollywood led to popularity of Juhu as a cultural and recreational hub"},
+{"year": 1992, "event": "Major civic clean-up and safety improvements introduced for visitors"},
+{"year": 2012, "event": "Environmental and coastal management initiatives started to control erosion and pollution"}
+],
+"Kanheri Caves": [
+{"year": 100, "event": "Early phases of rock-cut Buddhist cave excavation and monastery activity began (approximate)"},
+{"year": 600, "event": "Complex reached peak development with numerous chaityas and viharas"},
+{"year": 1819, "event": "British scholars documented and surveyed the Kanheri inscriptions and architecture"},
+{"year": 1959, "event": "Declared a protected archaeological site and conservation efforts commenced"}
+],
+"Bandra-Worli Sea Link": [
+{"year": 1999, "event": "Construction of the Bandra–Worli Sea Link officially began"},
+{"year": 2009, "event": "Sea link formally opened to traffic, dramatically reducing travel time across the bay"},
+{"year": 2015, "event": "Maintenance and capacity upgrades carried out to improve safety"},
+{"year": 2020, "event": "Installation of monitoring systems and periodic structural inspections completed"}
+],
+"Sanjay Gandhi National Park": [
+{"year": 1969, "event": "Area established and protected to conserve the Borivali forests surrounding the city"},
+{"year": 1980, "event": "Renamed and developed with visitor amenities and wildlife programs"},
+{"year": 1996, "event": "Expanded conservation initiatives and formalized park management"},
+{"year": 2010, "event": "Biodiversity and ecotourism projects launched to balance recreation and protection"}
+],
+"Shaniwar Wada": [
+{"year": 1732, "event": "Built as the seat of the Peshwas, showcasing Maratha architecture and fortifications"},
+{"year": 1828, "event": "A devastating fire destroyed large parts of the palace complex"},
+{"year": 1949, "event": "Archaeological interest and early preservation efforts began"},
+{"year": 2008, "event": "Major conservation and stabilization projects undertaken for the ruins"}
+],
+"Aga Khan Palace": [
+{"year": 1892, "event": "Constructed by Sultan Muhammad Shah Aga Khan III as a public welfare project"},
+{"year": 1942, "event": "Used as a prison for Mahatma Gandhi, Kasturba Gandhi and other leaders during the Quit India Movement (1942–44)"},
+{"year": 1969, "event": "Converted partly into a memorial and museum honoring the freedom struggle"},
+{"year": 1990, "event": "Underwent restoration to preserve historical interiors and gardens"}
+],
+"Sinhagad Fort": [
+{"year": 1670, "event": "Site of the famous Battle of Sinhagad where Maratha warrior Tanaji Malusare fell"},
+{"year": 1818, "event": "Captured by British forces during the Third Anglo-Maratha War"},
+{"year": 1950, "event": "Recognized as a heritage landmark and popular trekking destination"},
+{"year": 2000, "event": "Conservation and visitor-safety improvements carried out"}
+],
+"Dagadusheth Halwai Ganapati Temple": [
+{"year": 1893, "event": "Original shrine and trust established by Dagadusheth Halwai in Pune"},
+{"year": 1930, "event": "Temple gained wider fame and became central to Ganesh Chaturthi celebrations"},
+{"year": 1975, "event": "Major renovation and establishment of the managing trust to run charitable activities"},
+{"year": 2005, "event": "Modernization of facilities to support large annual festivals and pilgrim influx"}
+],
+"Parvati Hill": [
+{"year": 1660, "event": "Early temples and shrines began appearing on the hill, making it a sacred site"},
+{"year": 1750, "event": "Peshwa patronage led to expansion of temple structures and stairways"},
+{"year": 1940, "event": "Recognized and preserved as an important historical and religious precinct"},
+{"year": 2005, "event": "Urban conservation measures improved access and signage for visitors"}
+],
+"Pataleshwar Cave Temple": [
+{"year": 750, "event": "Rock-cut Hindu cave temple carved out in the early medieval period (approximate)"},
+{"year": 1820, "event": "British-era surveyors documented the inscriptions and architecture"},
+{"year": 1958, "event": "Declared a protected archaeological monument and restored by authorities"},
+{"year": 1999, "event": "Further conservation work to stabilize rock surfaces and visitor pathways"}
+],
+"Raja Dinkar Kelkar Museum": [
+{"year": 1965, "event": "Founder Dinkar Kelkar opened the collection to the public, creating a unique museum of everyday art"},
+{"year": 1990, "event": "Museum expanded to include additional galleries and conservation facilities"},
+{"year": 2005, "event": "Cataloguing and early digitization efforts began to preserve the collection"},
+{"year": 2018, "event": "Programs started to increase public engagement and educational outreach"}
+],
+"Khadakwasla Dam": [
+{"year": 1879, "event": "Original dam and reservoir constructed to supply water to Pune region"},
+{"year": 1961, "event": "Catastrophic floods in the region highlighted the need for improved flood management"},
+{"year": 1970, "event": "Reinforcements and upgrades made to improve reservoir safety and capacity"},
+{"year": 2000, "event": "Ongoing maintenance and watershed management projects implemented"}
+],
+"Bund Garden": [
+{"year": 1867, "event": "Early recreational gardens and bund works established to beautify the riverbank area"},
+{"year": 1920, "event": "Public amenities and promenades added, increasing its use as a city leisure spot"},
+{"year": 1975, "event": "Municipal refurbishment improved landscaping and pathways for visitors"},
+{"year": 2010, "event": "Urban revitalization included lighting and safety upgrades for evening visitors"}
+],
+"Rajiv Gandhi Zoological Park": [
+{"year": 1986, "event": "Originated as a snake park and small wildlife facility focused on local species"},
+{"year": 1999, "event": "Upgraded and expanded into a full zoological park with broader species collections"},
+{"year": 2008, "event": "Introduced conservation and education programs for wildlife awareness"},
+{"year": 2015, "event": "Modern enclosures and visitor facilities added to improve animal welfare and experience"}
+],
+"Sabarmati Ashram": [
+{"year": 1917, "event": "Established by Mahatma Gandhi on the banks of the Sabarmati River as his residence and base for India's freedom movement"},
+{"year": 1930, "event": "Starting point of the historic Dandi March (Salt March) led by Gandhi"},
+{"year": 1949, "event": "Converted into a national monument and public museum after India’s independence"},
+{"year": 2022, "event": "Major restoration and redevelopment project initiated to preserve the heritage site"}
+],
+"Jama Masjid Ahmedabad": [
+{"year": 1424, "event": "Built by Sultan Ahmed Shah I as the principal mosque of the city"},
+{"year": 1819, "event": "Partially damaged by the great Rann of Kutch earthquake"},
+{"year": 1920, "event": "Conservation efforts started under local heritage protection"},
+{"year": 2010, "event": "Declared as a significant heritage structure under the Ahmedabad Heritage Project"}
+],
+"Sidi Saiyyed Mosque": [
+{"year": 1573, "event": "Constructed by Sidi Saiyyed, an Abyssinian noble of the Gujarat Sultanate"},
+{"year": 1860, "event": "Became famous for its intricate stone latticework 'Tree of Life' window"},
+{"year": 1950, "event": "Recognized as a key symbol of Ahmedabad’s Indo-Islamic architecture"},
+{"year": 2000, "event": "Emblematic design adopted as the symbol of IIM Ahmedabad and Gujarat’s cultural identity"}
+],
+"Kankaria Lake": [
+{"year": 1451, "event": "Constructed during the reign of Sultan Qutb-ud-Din Ahmad Shah II"},
+{"year": 1870, "event": "Renovated by British engineers to improve water management and gardens"},
+{"year": 2008, "event": "Redeveloped as a modern recreation zone with Kankaria Carnival launched"},
+{"year": 2020, "event": "Introduced sustainable and eco-friendly tourist initiatives around the lake"}
+],
+"Adalaj Stepwell": [
+{"year": 1499, "event": "Commissioned by Queen Rudabai and completed under Sultan Mahmud Begada’s rule"},
+{"year": 1858, "event": "Documented by British officials as one of India’s finest stepwell designs"},
+{"year": 1975, "event": "Declared a protected monument under the Archaeological Survey of India"},
+{"year": 2018, "event": "Tourism amenities and interpretive displays added to enhance visitor experience"}
+],
+"Calico Museum of Textiles": [
+{"year": 1949, "event": "Founded by industrialist Gautam Sarabhai and his sister Gira Sarabhai"},
+{"year": 1980, "event": "Expanded to include rare Indian textile collections and miniature paintings"},
+{"year": 1990, "event": "Became one of India’s most renowned museums dedicated to handcrafts and design"},
+{"year": 2015, "event": "Digitization and conservation of delicate fabric collections initiated"}
+],
+"Bhadra Fort": [
+{"year": 1411, "event": "Built by Sultan Ahmed Shah I as the royal fort and palace complex of Ahmedabad"},
+{"year": 1817, "event": "Came under British control after the fall of the Mughal and Maratha rule"},
+{"year": 2008, "event": "Bhadra Plaza redevelopment project launched to restore historic surroundings"},
+{"year": 2014, "event": "Completed restoration and reopened as a heritage and cultural precinct"}
+],
+"Teen Darwaza": [
+{"year": 1411, "event": "Constructed as a ceremonial gateway to Bhadra Fort during Ahmed Shah’s reign"},
+{"year": 1812, "event": "Used for royal processions and public proclamations during the British era"},
+{"year": 1990, "event": "Conservation efforts undertaken to preserve intricate Islamic carvings"},
+{"year": 2010, "event": "Integrated into the city’s heritage walk circuit promoting urban heritage"}
+],
+"Hutheesing Jain Temple": [
+{"year": 1848, "event": "Built by merchant Sheth Hutheesing Kesarisinh as a dedication to the 15th Jain Tirthankara"},
+{"year": 1880, "event": "Temple complex expanded with additional shrines and artistic embellishments"},
+{"year": 1970, "event": "Major restoration and marble polishing work conducted"},
+{"year": 2017, "event": "Declared an important Jain pilgrimage site and protected heritage structure"}
+],
+"Sabarmati Riverfront": [
+{"year": 2005, "event": "Urban development project initiated to rejuvenate the Sabarmati River banks"},
+{"year": 2012, "event": "First phase inaugurated with promenades, parks, and public spaces"},
+{"year": 2017, "event": "Extended northward with additional infrastructure and cultural venues"},
+{"year": 2021, "event": "Integrated smart city and environmental sustainability measures implemented"}
+],
+"Sardar Patel Museum": [
+{"year": 1890, "event": "Originally built as Moti Shahi Mahal during Mughal rule"},
+{"year": 1978, "event": "Converted into a museum dedicated to Sardar Vallabhbhai Patel"},
+{"year": 2013, "event": "Reopened after major modernization with multimedia exhibits"},
+{"year": 2020, "event": "Digital archives and virtual tours launched for global accessibility"}
+],
+"Dutch Garden Surat": [
+{"year": 1700, "event": "Established as a cemetery and park for Dutch and English traders"},
+{"year": 1850, "event": "Converted into a landscaped public garden under colonial administration"},
+{"year": 1975, "event": "Recognized as a heritage site for its European-style tombs"},
+{"year": 2018, "event": "Beautification and conservation of colonial structures initiated"}
+],
+"Gopi Talav": [
+{"year": 1510, "event": "Artificial lake built by Malik Gopi, governor under Gujarat Sultanate"},
+{"year": 1700, "event": "Lake silted and neglected for decades during late Mughal era"},
+{"year": 2012, "event": "Completely restored and developed as a cultural recreation zone"},
+{"year": 2020, "event": "Enhanced with eco-parks, water features, and event facilities"}
+],
+"Sarthana Nature Park": [
+{"year": 1984, "event": "Established as Surat’s primary zoological and botanical park"},
+{"year": 1999, "event": "Expansion included wildlife rescue and breeding programs"},
+{"year": 2010, "event": "Introduced safari experiences and educational outreach initiatives"},
+{"year": 2018, "event": "Biodiversity preservation and eco-education programs launched"}
+],
+"Ambika Niketan Temple": [
+{"year": 1969, "event": "Temple constructed by Sadhvi Aambaben to honor Goddess Ambika"},
+{"year": 1980, "event": "Rapidly gained popularity among devotees from Surat and nearby regions"},
+{"year": 2005, "event": "Renovation and addition of community facilities completed"},
+{"year": 2019, "event": "Celebrated 50 years as one of Surat’s major religious sites"}
+],
+"Surat Castle": [
+{"year": 1546, "event": "Built by Sultan Mahmud III to protect Surat from Portuguese attacks"},
+{"year": 1670, "event": "Strengthened by Mughal governors to secure the city’s port"},
+{"year": 2006, "event": "Extensive restoration carried out under Archaeological Survey of India"},
+{"year": 2018, "event": "Converted into a heritage museum with guided tours and exhibits"}
+],
+"Dumas Beach": [
+{"year": 1900, "event": "Became known as a serene seaside retreat for locals and traders"},
+{"year": 1980, "event": "Developed into a major public beach and tourist destination"},
+{"year": 2005, "event": "Safety, lighting, and waste management improvements introduced"},
+{"year": 2018, "event": "Beachfront redevelopment with cultural and food zones inaugurated"}
+],
+"Science Centre Surat": [
+{"year": 2009, "event": "Opened as a state-of-the-art science and technology education complex"},
+{"year": 2013, "event": "Expanded with a planetarium and 3D theatre for public learning"},
+{"year": 2017, "event": "Added innovation hub and exhibits on renewable energy"},
+{"year": 2022, "event": "Introduced augmented reality and digital science exhibitions"}
+],
+"Jagdishchandra Bose Aquarium": [
+{"year": 2014, "event": "Inaugurated as India’s first state-of-the-art public aquarium"},
+{"year": 2016, "event": "Expanded to include over 150 species of marine and freshwater life"},
+{"year": 2018, "event": "Educational and conservation awareness programs introduced"},
+{"year": 2021, "event": "Maintenance and digital monitoring systems upgraded"}
+],
+"Swaminarayan Temple Surat": [
+{"year": 1860, "event": "Established under the Bochasanwasi Akshar Purushottam Swaminarayan Sanstha"},
+{"year": 1950, "event": "Expanded with marble shrines and community service facilities"},
+{"year": 1998, "event": "Major reconstruction in traditional temple style completed"},
+{"year": 2019, "event": "Digitization and modern amenities added for devotees and visitors"}
+],
+  "Bangalore Palace": [
+    {"year": 1874, "event": "Construction began under Rev. Garrett, the first principal of Central High School, Bangalore"},
+    {"year": 1884, "event": "Purchased and expanded by Maharaja Chamarajendra Wadiyar of Mysore"},
+    {"year": 1970, "event": "Major restoration efforts initiated by the royal family"},
+    {"year": 2005, "event": "Opened to the public as a heritage tourist attraction and cultural venue"}
+  ],
+  "Lalbagh Botanical Garden": [
+    {"year": 1760, "event": "Founded by Hyder Ali as a private garden inspired by Mughal-style layouts"},
+    {"year": 1780, "event": "Expanded by Tipu Sultan with rare plants imported from Persia, Afghanistan, and France"},
+    {"year": 1856, "event": "Converted into a public botanical garden under British administration"},
+    {"year": 2004, "event": "Designated a national botanical garden and biodiversity hotspot"}
+  ],
+  "Cubbon Park": [
+    {"year": 1870, "event": "Established by Major General Richard Sankey as a green space in colonial Bangalore"},
+    {"year": 1927, "event": "Renamed Cubbon Park in honor of Commissioner Sir Mark Cubbon"},
+    {"year": 1996, "event": "Declared a heritage zone with biodiversity conservation programs"},
+    {"year": 2018, "event": "Digital mapping and eco-restoration initiatives launched"}
+  ],
+  "Tipu Sultan's Summer Palace": [
+    {"year": 1791, "event": "Completed by Tipu Sultan as his summer residence in Indo-Islamic architectural style"},
+    {"year": 1800, "event": "Taken over by the British after Tipu Sultan’s death and used as a secretariat"},
+    {"year": 1959, "event": "Converted into a museum showcasing Tipu Sultan’s legacy"},
+    {"year": 2016, "event": "Comprehensive restoration and tourist upgrades completed"}
+  ],
+  "Vidhana Soudha": [
+    {"year": 1951, "event": "Foundation stone laid by Prime Minister Jawaharlal Nehru"},
+    {"year": 1956, "event": "Completed and inaugurated as the seat of Karnataka’s state legislature"},
+    {"year": 2000, "event": "Exterior lighting and beautification work implemented"},
+    {"year": 2018, "event": "Declared a protected heritage structure and opened for guided tours"}
+  ],
+  "ISKCON Temple Bangalore": [
+    {"year": 1997, "event": "Temple inaugurated as part of the Hare Krishna movement’s global outreach"},
+    {"year": 2005, "event": "Added cultural and educational centers promoting Vedic philosophy"},
+    {"year": 2013, "event": "Construction of the Krishna Lila Theme Park initiated"},
+    {"year": 2021, "event": "Became one of the largest ISKCON complexes in South India"}
+  ],
+  "Bannerghatta National Park": [
+    {"year": 1971, "event": "Established as a national park to conserve local flora and fauna"},
+    {"year": 2002, "event": "Zoological reserve and butterfly park introduced"},
+    {"year": 2010, "event": "Wildlife rescue and rehabilitation programs started"},
+    {"year": 2020, "event": "Eco-tourism initiatives launched for sustainable visitor engagement"}
+  ],
+  "Nandi Hills": [
+    {"year": 1600, "event": "Used as a strategic hill fortress by local rulers"},
+    {"year": 1791, "event": "Captured by British forces during the Third Anglo-Mysore War"},
+    {"year": 1950, "event": "Developed into a popular hill station and picnic spot"},
+    {"year": 2020, "event": "Infrastructure improvements made to support tourism and conservation"}
+  ],
+  "Commercial Street Bangalore": [
+    {"year": 1860, "event": "Developed as a trade and shopping district during British colonial rule"},
+    {"year": 1950, "event": "Became Bangalore’s most prominent retail and fashion hub"},
+    {"year": 2000, "event": "Pedestrianization and modernization efforts introduced"},
+    {"year": 2021, "event": "Smart street and beautification project completed"}
+  ],
+  "Visvesvaraya Museum": [
+    {"year": 1962, "event": "Inaugurated by Prime Minister Jawaharlal Nehru in honor of Sir M. Visvesvaraya"},
+    {"year": 1979, "event": "Expanded with new galleries focusing on electronics and biotechnology"},
+    {"year": 2010, "event": "Modernization with interactive science exhibits and digital installations"},
+    {"year": 2021, "event": "Virtual tours and online learning initiatives launched"}
+  ],
+  "Marina Beach": [
+    {"year": 1884, "event": "Developed by Governor Mountstuart Elphinstone Grant Duff as a promenade"},
+    {"year": 1940, "event": "Became the primary site for political and public gatherings"},
+    {"year": 2008, "event": "Beautification and coastal safety projects implemented"},
+    {"year": 2020, "event": "Eco-friendly waste and coastal protection programs introduced"}
+  ],
+  "Kapaleeshwarar Temple": [
+    {"year": 1600, "event": "Rebuilt by the Vijayanagara kings in Dravidian architectural style"},
+    {"year": 1800, "event": "Temple expanded with new mandapams and sculptures"},
+    {"year": 1970, "event": "Declared a key heritage and religious landmark in Chennai"},
+    {"year": 2019, "event": "Conservation and lighting restoration completed"}
+  ],
+  "Santhome Basilica": [
+    {"year": 1523, "event": "First church built by Portuguese missionaries over the tomb of St. Thomas the Apostle"},
+    {"year": 1896, "event": "Reconstructed in Neo-Gothic style by the British"},
+    {"year": 1956, "event": "Elevated to the status of a basilica by Pope Pius XII"},
+    {"year": 2018, "event": "Restoration and digital preservation of archives completed"}
+  ],
+  "Fort St. George": [
+    {"year": 1644, "event": "Constructed by the British East India Company as the first English fortress in India"},
+    {"year": 1758, "event": "Served as the headquarters for the Madras Presidency"},
+    {"year": 1947, "event": "Became the seat of the Tamil Nadu Legislative Assembly"},
+    {"year": 2010, "event": "Restoration of the museum and historic structures completed"}
+  ],
+  "Valluvar Kottam": [
+    {"year": 1976, "event": "Built to honor the Tamil poet and philosopher Thiruvalluvar"},
+    {"year": 1980, "event": "Became a major cultural landmark and site for literary events"},
+    {"year": 2005, "event": "Renovation and improvements made to the main auditorium"},
+    {"year": 2018, "event": "Integrated lighting and heritage preservation upgrades completed"}
+  ],
+  "Edward Elliot's Beach": [
+    {"year": 1900, "event": "Developed as a quieter coastal retreat compared to Marina Beach"},
+    {"year": 1971, "event": "Became popular for leisure and evening gatherings"},
+    {"year": 2010, "event": "Beautification and coastal conservation work launched"},
+    {"year": 2022, "event": "Modern amenities added with improved pedestrian access"}
+  ],
+  "Government Museum Chennai": [
+    {"year": 1851, "event": "Founded as the Madras Museum by the British East India Company"},
+    {"year": 1896, "event": "Expanded with new galleries including the Connemara Public Library"},
+    {"year": 1980, "event": "Declared a national heritage institution"},
+    {"year": 2018, "event": "Digital cataloguing and exhibit modernization undertaken"}
+  ],
+  "Birla Planetarium Chennai": [
+    {"year": 1988, "event": "Inaugurated to promote astronomical education and awareness"},
+    {"year": 2005, "event": "Introduced advanced projection systems and space exhibits"},
+    {"year": 2015, "event": "Expanded with an interactive science park and digital dome shows"},
+    {"year": 2021, "event": "Became one of India’s leading planetariums with virtual learning features"}
+  ],
+  "Vadapalani Murugan Temple": [
+    {"year": 1890, "event": "Established as a small thatched shrine dedicated to Lord Murugan"},
+    {"year": 1920, "event": "Expanded into a major temple complex through local patronage"},
+    {"year": 1975, "event": "Underwent major renovations with new gopuram and halls"},
+    {"year": 2016, "event": "Restoration and infrastructure improvements completed"}
+  ],
+  "St. Thomas Mount": [
+    {"year": 72, "event": "Believed to be the site of St. Thomas the Apostle’s martyrdom"},
+    {"year": 1547, "event": "Portuguese built the Church of Our Lady of Expectation atop the mount"},
+    {"year": 1900, "event": "Pilgrimage site established with stone steps and chapels"},
+    {"year": 2019, "event": "Area restored with enhanced facilities for pilgrims and visitors"}
+  ],
+"Victoria Memorial": [
+{"year": 1906, "event": "Foundation stone laid by the Prince of Wales"},
+{"year": 1921, "event": "Victoria Memorial officially opened to the public"},
+{"year": 1950, "event": "Converted into a museum under Government of India"},
+{"year": 2021, "event": "Digital gallery and light show introduced"}
+],
+"Howrah Bridge": [
+{"year": 1936, "event": "Construction of the bridge began"},
+{"year": 1943, "event": "Bridge opened to traffic"},
+{"year": 1965, "event": "Renamed Rabindra Setu in honor of Rabindranath Tagore"},
+{"year": 2011, "event": "Declared a heritage structure by the Kolkata Port Trust"}
+],
+"Indian Museum Kolkata": [
+{"year": 1814, "event": "Founded by the Asiatic Society of Bengal"},
+{"year": 1875, "event": "Shifted to its current location on Chowringhee Road"},
+{"year": 1947, "event": "Collections reorganized post-independence"},
+{"year": 2014, "event": "Celebrated bicentennial anniversary"}
+],
+"Dakshineswar Kali Temple": [
+{"year": 1855, "event": "Temple founded by Rani Rashmoni"},
+{"year": 1869, "event": "Sri Ramakrishna began his spiritual service here"},
+{"year": 1955, "event": "Major restoration undertaken"},
+{"year": 2015, "event": "New ghats and visitor facilities inaugurated"}
+],
+"Kalighat Kali Temple": [
+{"year": 1809, "event": "Temple structure built in its present form"},
+{"year": 1850, "event": "Becomes major pilgrimage site for devotees of Goddess Kali"},
+{"year": 1970, "event": "Temple complex renovated"},
+{"year": 2020, "event": "New sanitation and crowd management system implemented"}
+],
+"Science City Kolkata": [
+{"year": 1997, "event": "Inaugurated by Prime Minister I.K. Gujral"},
+{"year": 2000, "event": "Space Odyssey and Evolution Park exhibits launched"},
+{"year": 2010, "event": "Introduced 3D theater and time machine ride"},
+{"year": 2023, "event": "New digital planetarium opened"}
+],
+"Eden Gardens": [
+{"year": 1864, "event": "Stadium established by the British"},
+{"year": 1987, "event": "Hosted World Cup final for the first time"},
+{"year": 2011, "event": "Renovated for ICC Cricket World Cup"},
+{"year": 2022, "event": "Upgraded with smart seating and LED floodlights"}
+],
+"St. Paul's Cathedral Kolkata": [
+{"year": 1847, "event": "Consecrated as the first Anglican cathedral in Asia"},
+{"year": 1897, "event": "Reconstructed after earthquake damage"},
+{"year": 1951, "event": "Further restoration following another quake"},
+{"year": 2021, "event": "Bicentennial celebrations held"}
+],
+"Belur Math": [
+{"year": 1897, "event": "Founded by Swami Vivekananda as headquarters of Ramakrishna Mission"},
+{"year": 1938, "event": "Main temple completed blending Hindu, Christian, and Islamic styles"},
+{"year": 2006, "event": "Centenary of Swami Vivekananda’s return to India celebrated"},
+{"year": 2020, "event": "Launched virtual tours for devotees worldwide"}
+],
+"Alipore Zoo": [
+{"year": 1876, "event": "Opened as one of the oldest zoological gardens in India"},
+{"year": 1900, "event": "Added large reptile and bird sections"},
+{"year": 1980, "event": "Became major breeding center for endangered species"},
+{"year": 2022, "event": "Introduced night safari and digital ticketing"}
+],
+"Vivekananda Rock Memorial": [
+{"year": 1964, "event": "Initiative launched after Swami Vivekananda’s birth centenary"},
+{"year": 1970, "event": "Memorial inaugurated by President V.V. Giri"},
+{"year": 2000, "event": "Major restoration and maintenance project completed"},
+{"year": 2022, "event": "Solar lighting system installed"}
+],
+"Thiruvalluvar Statue": [
+{"year": 1990, "event": "Construction of the statue began"},
+{"year": 1999, "event": "Inaugurated by Chief Minister M. Karunanidhi"},
+{"year": 2004, "event": "Access bridge built for visitors"},
+{"year": 2021, "event": "Renovation and lighting enhancement completed"}
+],
+"Kanyakumari Beach": [
+{"year": 1800, "event": "Became known as a scenic pilgrimage and trade point"},
+{"year": 1970, "event": "Developed as a tourist destination with promenade"},
+{"year": 2004, "event": "Affected by Indian Ocean tsunami, later rebuilt"},
+{"year": 2019, "event": "Beautification and eco-restoration project completed"}
+],
+"Our Lady of Ransom Church": [
+{"year": 1800, "event": "Original church structure built by Portuguese missionaries"},
+{"year": 1914, "event": "Gothic-style reconstruction completed"},
+{"year": 2005, "event": "Declared heritage monument by local diocese"},
+{"year": 2022, "event": "Renovation and lighting project inaugurated"}
+],
+"Gandhi Memorial Mandapam": [
+{"year": 1956, "event": "Memorial built to honor Mahatma Gandhi’s ashes immersion"},
+{"year": 1980, "event": "Solar alignment designed to illuminate sanctum on Gandhi’s birthday"},
+{"year": 2000, "event": "Renovation and visitor center added"},
+{"year": 2020, "event": "Enhanced exhibits with interactive digital displays"}
+],
+"Suchindram Temple": [
+{"year": 1600, "event": "Temple dedicated to the Trimurti built in Dravidian style"},
+{"year": 1890, "event": "Renovated under Travancore rule"},
+{"year": 1956, "event": "Integrated into Kanyakumari district after state reorganization"},
+{"year": 2020, "event": "Conservation efforts initiated for temple murals"}
+],
+"Kanyakumari Temple": [
+{"year": 300, "event": "Ancient shrine dedicated to Devi Kanyakumari established"},
+{"year": 1600, "event": "Expanded by Pandya and Nayak rulers"},
+{"year": 1950, "event": "Declared protected by Archaeological Survey of India"},
+{"year": 2018, "event": "Renovation of sanctum and corridors completed"}
+],
+"Thirparappu Falls": [
+{"year": 1800, "event": "Recognized as natural bathing site for locals"},
+{"year": 1985, "event": "Tourist infrastructure developed"},
+{"year": 2005, "event": "Hydroelectric project initiated nearby"},
+{"year": 2021, "event": "Declared eco-tourism zone"}
+],
+"Padmanabhapuram Palace": [
+{"year": 1601, "event": "Constructed by Iravi Varma of Travancore dynasty"},
+{"year": 1750, "event": "Expanded by Marthanda Varma with intricate woodwork"},
+{"year": 1949, "event": "Came under Tamil Nadu administration after state merger"},
+{"year": 2019, "event": "UNESCO tentative heritage listing proposal submitted"}
+],
+"Vattakottai Fort": [
+{"year": 1700, "event": "Built as coastal defense fort by Travancore kings"},
+{"year": 1809, "event": "Used by British East India Company for surveillance"},
+{"year": 1975, "event": "Declared protected monument"},
+{"year": 2020, "event": "Restoration and coastal garden project completed"}
+]
+}
