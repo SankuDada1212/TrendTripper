@@ -11,6 +11,15 @@ import pandas as pd
 import datetime as dt
 from random import choice
 
+# Load .env automatically if present
+try:
+    from dotenv import load_dotenv
+    # Load env from backend/.env
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    load_dotenv(os.path.join(CURRENT_DIR, ".env"))
+except Exception:
+    pass
+
 try:
     from twilio.rest import Client as TwilioClient
 except Exception:
@@ -65,6 +74,8 @@ SOS_CONTACTS = os.environ.get(
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 TWILIO_NUMBER = os.environ.get("TWILIO_NUMBER", "")
+TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # e.g., whatsapp:+14155238886
+TWILIO_ENABLE_WHATSAPP = os.environ.get("TWILIO_ENABLE_WHATSAPP", "0").lower() in ["1", "true", "yes"]
 twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if (TwilioClient and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN) else None
 
 # ----------------------------
@@ -363,7 +374,8 @@ def dummy_ai_predict(features: dict) -> str:
     return choice(["REAL", "FALSE"])
 
 
-def send_sms_alert(message: str) -> bool:
+def send_sms_alert(message: str) -> list[str]:
+    sids: list[str] = []
     try:
         if not twilio_client or not TWILIO_NUMBER:
             # Twilio not configured; simulate failure so it queues offline
@@ -372,10 +384,36 @@ def send_sms_alert(message: str) -> bool:
             contact_num = contact.strip()
             if not contact_num:
                 continue
-            twilio_client.messages.create(body=message, from_=TWILIO_NUMBER, to=contact_num)
-        return True
-    except Exception:
-        return False
+            msg = twilio_client.messages.create(body=message, from_=TWILIO_NUMBER, to=contact_num)
+            try:
+                sids.append(getattr(msg, "sid", ""))
+            except Exception:
+                pass
+        return sids
+    except Exception as e:
+        print(f"[Twilio] Send failed: {e}")
+        return []
+
+
+def send_whatsapp_alert(message: str) -> list[str]:
+    sids: list[str] = []
+    try:
+        if not twilio_client or not TWILIO_WHATSAPP_FROM:
+            raise RuntimeError("Twilio WhatsApp not configured")
+        for contact in SOS_CONTACTS:
+            contact_num = contact.strip()
+            if not contact_num:
+                continue
+            to_wa = contact_num if contact_num.startswith("whatsapp:") else f"whatsapp:{contact_num}"
+            msg = twilio_client.messages.create(body=message, from_=TWILIO_WHATSAPP_FROM, to=to_wa)
+            try:
+                sids.append(getattr(msg, "sid", ""))
+            except Exception:
+                pass
+        return sids
+    except Exception as e:
+        print(f"[Twilio] WhatsApp send failed: {e}")
+        return []
 
 # ----------------------------
 # Load model and dataset
@@ -791,8 +829,9 @@ def api_sos(payload: Optional[dict] = None):
         f"AI Detection: {prediction}"
     )
 
-    if send_sms_alert(body):
-        return {"status": "sent"}
+    sids = send_sms_alert(body)
+    if sids:
+        return {"status": "sent", "message_sids": sids}
     else:
         save_offline_alert(body)
         return {"status": "queued", "message": "No internet/SMS failed. Saved offline."}
@@ -802,6 +841,16 @@ def api_sos(payload: Optional[dict] = None):
 def api_sos_retry():
     count = resend_pending_alerts()
     return {"retried": count}
+
+@app.get("/api/sos/status")
+def api_sos_status():
+    return {
+        "twilio_client": bool(twilio_client),
+        "twilio_number_set": bool(TWILIO_NUMBER),
+        "whatsapp_enabled": bool(TWILIO_ENABLE_WHATSAPP),
+        "whatsapp_from_set": bool(os.environ.get("TWILIO_WHATSAPP_FROM")),
+        "contacts_count": len(SOS_CONTACTS),
+    }
 
 # ----------------------------
 # Mood Analysis Endpoints (Code 1 + Code 2 integration)

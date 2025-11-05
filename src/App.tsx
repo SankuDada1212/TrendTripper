@@ -17,6 +17,7 @@ import Hotels from "./pages/Hotels";
 import NotFound from "./pages/NotFound";
 import MonumentSearch from "@/pages/MonumentSearch"; // ✅ keep only this import
 import Bookings from "@/pages/Bookings";
+import Restaurants from "@/pages/Restaurants";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
                 {/* <Route path="/travel" element={<Travel />} /> */}
                 <Route path="/bookings" element={<Bookings />} />
                 <Route path="/monument-search" element={<MonumentSearch />} /> {/* ✅ added here */}
+                <Route path="/restaurants" element={<Restaurants />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

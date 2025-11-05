@@ -1,0 +1,270 @@
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type PlaceResult = {
+	name: string;
+	addr: string;
+	lat: number | null;
+	lon: number | null;
+	score: number;
+	vibe: string;
+};
+
+const MAX_RESULTS = 15;
+
+const MOOD_KEYWORDS: Record<string, string[]> = {
+	POSITIVE: ["cafe", "coffee", "dessert", "ice cream", "bakery", "fast food", "juice"],
+	NEGATIVE: ["thali", "comfort", "home", "dhaba", "veg", "simple", "dining hall"],
+	ROMANTIC: ["rooftop", "view", "sea", "fine dining", "candle", "terrace", "romantic", "sunset"],
+	NEUTRAL: ["restaurant", "hotel", "family", "buffet"],
+};
+
+const INTENT_KEYWORDS: Record<string, number> = {
+	quiet: 1.2,
+	luxury: 1.3,
+	cheap: 1.1,
+	street: 1.2,
+	family: 1.2,
+	romantic: 1.3,
+	group: 1.1,
+	quick: 1.1,
+	"late night": 1.2,
+};
+
+function detectContextFromQuery(query: string): string {
+	const q = query.toLowerCase();
+	if (["rooftop", "view", "romantic", "date"].some((k) => q.includes(k))) return "ROMANTIC";
+	if (["thali", "veg", "comfort", "dhaba"].some((k) => q.includes(k))) return "NEGATIVE";
+	if (["coffee", "dessert", "cake", "ice cream"].some((k) => q.includes(k))) return "POSITIVE";
+	return "NEUTRAL";
+}
+
+function generateVibeSummary(name: string): string {
+	const n = name.toLowerCase();
+	if (n.includes("thali")) return "A peaceful spot for homely thali meals 🍛";
+	if (n.includes("cafe") || n.includes("coffee")) return "A chill cafe perfect for conversations ☕";
+	if (n.includes("rooftop") || n.includes("view")) return "Romantic rooftop vibes with great ambience 🌇";
+	if (n.includes("dhaba")) return "Authentic local flavors in a casual setup 🍽️";
+	return "A great place to relax and enjoy good food 😋";
+}
+
+function computeMoodScore(name: string, mood: string, query: string): number {
+	const text = name.toLowerCase();
+	let score = 0;
+	for (const kw of MOOD_KEYWORDS[mood] ?? []) {
+		if (text.includes(kw)) score += 3;
+	}
+	for (const [kw, boost] of Object.entries(INTENT_KEYWORDS)) {
+		if (query.toLowerCase().includes(kw)) score += boost;
+	}
+	return score;
+}
+
+function computeDistanceScore(lat1?: number | null, lon1?: number | null, lat2?: number | null, lon2?: number | null): number {
+	if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
+	const dist = Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) * 111; // km
+	return Math.max(0, 1 - dist / 10);
+}
+
+async function geoapifyGeocode(placeText: string, apiKey: string): Promise<{ lat: number | null; lon: number | null }> {
+	const url = new URL("https://api.geoapify.com/v1/geocode/search");
+	url.searchParams.set("text", placeText);
+	url.searchParams.set("apiKey", apiKey);
+	url.searchParams.set("limit", "1");
+	const res = await fetch(url.toString());
+	const data = await res.json();
+	const feature = data?.features?.[0];
+	if (feature?.geometry?.coordinates) {
+		const [lon, lat] = feature.geometry.coordinates as [number, number];
+		return { lat, lon };
+	}
+	return { lat: null, lon: null };
+}
+
+async function geoapifyFetchPlaces(lat: number, lon: number, radiusKm: number, apiKey: string, categories = "catering.restaurant,catering.cafe,catering.fast_food") {
+	const url = new URL("https://api.geoapify.com/v2/places");
+	url.searchParams.set("categories", categories);
+	url.searchParams.set("filter", `circle:${lon},${lat},${radiusKm * 1000}`);
+	url.searchParams.set("bias", `proximity:${lon},${lat}`);
+	url.searchParams.set("limit", String(MAX_RESULTS));
+	url.searchParams.set("apiKey", apiKey);
+	const res = await fetch(url.toString());
+	return res.json();
+}
+
+const Restaurants = () => {
+	const apiKey = (import.meta as any).env?.VITE_GEOAPIFY_KEY as string | undefined;
+	const [query, setQuery] = useState("");
+	const [city, setCity] = useState("Dwarka Gujarat");
+	const [foodPref, setFoodPref] = useState("Any");
+	const [radiusKm, setRadiusKm] = useState(5);
+	const [isLoading, setIsLoading] = useState(false);
+	const [results, setResults] = useState<PlaceResult[]>([]);
+	const [saved, setSaved] = useState<PlaceResult[]>([]);
+	const [bookingFor, setBookingFor] = useState<number | null>(null);
+
+	const mood = useMemo(() => detectContextFromQuery(query), [query]);
+
+	async function onSearch() {
+		if (!query.trim()) return;
+		if (!apiKey) {
+			setResults([]);
+			return;
+		}
+		setIsLoading(true);
+		try {
+			const { lat, lon } = await geoapifyGeocode(city, apiKey);
+			if (lat == null || lon == null) {
+				setResults([]);
+				setIsLoading(false);
+				return;
+			}
+			const data = await geoapifyFetchPlaces(lat, lon, radiusKm, apiKey);
+			const features: any[] = data?.features ?? [];
+			const computed: PlaceResult[] = features.map((f) => {
+				const props = f?.properties ?? {};
+				const name: string = props?.name || "Unnamed";
+				const addr: string = props?.address_line2 || props?.formatted || "";
+				const plat: number | null = props?.lat ?? null;
+				const plon: number | null = props?.lon ?? null;
+				const mscore = computeMoodScore(name, mood, query);
+				const dscore = computeDistanceScore(lat, lon, plat, plon);
+				const total = 0.6 * mscore + 0.4 * dscore;
+				return { name, addr, lat: plat, lon: plon, score: total, vibe: generateVibeSummary(name) };
+			});
+			computed.sort((a, b) => b.score - a.score);
+			setResults(computed.slice(0, MAX_RESULTS));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	return (
+		<div className="container mx-auto px-4 py-10">
+			<div className="max-w-3xl mx-auto">
+				<h1 className="text-3xl font-bold mb-2">🧠 Trend Tripper — Mood-Based Restaurant Finder 🍽️</h1>
+
+
+				<Card className="mb-8">
+					<CardHeader>
+						<CardTitle>Search Settings</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="query">Describe what you're looking for</Label>
+							<Input id="query" placeholder="e.g. romantic rooftop cafe in Jaipur" value={query} onChange={(e) => setQuery(e.target.value)} />
+						</div>
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="city">City</Label>
+								<Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
+							</div>
+							<div className="space-y-2">
+								<Label>Food Preference</Label>
+								<Select value={foodPref} onValueChange={setFoodPref}>
+									<SelectTrigger>
+										<SelectValue placeholder="Any" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="Any">Any</SelectItem>
+										<SelectItem value="Veg">Veg</SelectItem>
+										<SelectItem value="Non-Veg">Non-Veg</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="radius">Radius (km)</Label>
+								<Input id="radius" type="number" min={1} max={15} value={radiusKm} onChange={(e) => setRadiusKm(Math.max(1, Math.min(15, Number(e.target.value) || 1)))} />
+							</div>
+						</div>
+						<div className="flex items-center gap-3 pt-2">
+							<Button onClick={onSearch} disabled={isLoading || !query.trim()}>
+								{isLoading ? "Searching..." : "Search Now"}
+							</Button>
+							{!apiKey && (
+								<span className="text-amber-600 text-sm">Set VITE_GEOAPIFY_KEY to enable search.</span>
+							)}
+						</div>
+					</CardContent>
+				</Card>
+
+				{query.trim() && (
+					<p className="mb-6">✨ Auto Detected → Mood: <b>{mood}</b>, Food: <b>{foodPref}</b>, City: <b>{city}</b></p>
+				)}
+
+				<div className="space-y-6">
+					{!isLoading && results.length === 0 && query.trim() && (
+						<Card>
+							<CardContent className="py-6 text-muted-foreground">No restaurants found. Try expanding radius or changing query.</CardContent>
+						</Card>
+					)}
+
+					{results.map((r, idx) => (
+						<Card key={`${r.name}-${idx}`} className="border">
+							<CardHeader className="pb-2">
+								<CardTitle className="flex items-center justify-between gap-4">
+									<span>{idx + 1}. {r.name} — <span className="font-normal text-muted-foreground">{r.vibe}</span></span>
+									{r.lat != null && r.lon != null && (
+										<a className="text-primary text-sm" href={`https://www.google.com/maps/place/${r.lat},${r.lon}`} target="_blank" rel="noreferrer">📍 Open in Google Maps</a>
+									)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+								<div className="text-sm text-muted-foreground">{r.addr}</div>
+								<div className="flex items-center gap-2">
+									<Button variant="secondary" onClick={() => setSaved((s) => (s.find((x) => x.name === r.name) ? s : [...s, r]))}>⭐ Save</Button>
+									<Button onClick={() => setBookingFor(idx)}>📅 Book</Button>
+								</div>
+							</CardContent>
+							{bookingFor === idx && (
+								<CardContent className="pt-0 pb-6">
+									<div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+										<div className="space-y-1">
+											<Label htmlFor="name">Your name</Label>
+											<Input id="name" placeholder="Your name" />
+										</div>
+										<div className="space-y-1">
+											<Label htmlFor="date">Date</Label>
+											<Input id="date" type="date" />
+										</div>
+										<div className="space-y-1">
+											<Label htmlFor="time">Time</Label>
+											<Input id="time" type="time" />
+										</div>
+										<div className="space-y-1">
+											<Label htmlFor="guests">Guests</Label>
+											<Input id="guests" type="number" min={1} max={10} defaultValue={2} />
+										</div>
+									</div>
+									<div className="pt-3">
+										<Button onClick={() => setBookingFor(null)}>Confirm Booking</Button>
+									</div>
+								</CardContent>
+							)}
+						</Card>
+					))}
+				</div>
+
+				{/* Sidebar-like saved spots summary */}
+				{saved.length > 0 && (
+					<div className="mt-10">
+						<h2 className="text-xl font-semibold mb-2">⭐ My Saved Spots</h2>
+						<ul className="list-disc pl-5 text-sm text-muted-foreground">
+							{saved.map((s) => (
+								<li key={s.name}>{s.name}</li>
+							))}
+						</ul>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+};
+
+export default Restaurants;
+
+

@@ -11,6 +11,7 @@ const Navbar = () => {
     { path: "/", label: "Home" },
     { path: "/discover", label: "Discover" },
     { path: "/mood", label: "Mood" },
+    { path: "/restaurants", label: "Restaurants" },
     { path: "/events", label: "Events" },
     { path: "/budget", label: "Budget" },
     { path: "/hotels", label: "Hotels" },
