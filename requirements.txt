@@ -7,9 +7,9 @@ python-dotenv==1.0.1
 twilio==9.8.3
 
 # --- AI / Torch model ---
-torch==2.7.1+cu118
-torchvision==0.22.1+cu118
-torchaudio==2.7.1+cu118
+torch
+torchvision
+torchaudio
 pillow==11.3.0
 
 # --- Data and utilities ---
@@ -27,3 +27,4 @@ folium==0.20.0
 
 # --- For model management or file I/O ---
 python-multipart==0.0.20
+
