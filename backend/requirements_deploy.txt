@@ -23,10 +23,11 @@ numpy==1.26.4
 # Image Processing
 pillow==11.3.0
 
-# Machine Learning (if needed for monument detection)
-# torch==2.7.1
-# torchvision==0.22.1
-# Note: These are large - only include if you need monument detection
+# Machine Learning (for monument detection and mood analysis)
+torch==2.7.1
+torchvision==0.22.1
+transformers==4.56.2
+# Note: These are large but required for monument detection and mood analysis
 
 # SMS/Communication
 twilio==9.8.3

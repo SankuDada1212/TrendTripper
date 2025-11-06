@@ -75,7 +75,7 @@ IMG_SIZE = 128
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "fast_monument_cnn.pth")
-DATA_DIR = r"C:\Users\sanke\Documents\Project\dataset"
+DATA_DIR = os.path.join(BASE_DIR, "dataset")  # Optional dataset folder
 INFO_FILE = os.path.join(BASE_DIR, "data", "monument_info.json")
 HISTORY_FILE = os.path.join(BASE_DIR, "data", "monument_history.json")
 N8N_WEBHOOK = "https://sanket0208.app.n8n.cloud/webhook/monument"
@@ -106,8 +106,8 @@ twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if (TwilioCl
 # ----------------------------
 # Booking/Dash-equivalent data setup
 # ----------------------------
-DIST_FILE = r"C:\\Users\\sanke\\Documents\\Project\\Python\\Rishi\\Lets\\Dist.xlsx"
-FLIGHT_FILE = r"C:\\Users\\sanke\\Documents\\Project\\Python\\Rishi\\Lets\\flight.xlsx"
+DIST_FILE = os.path.join(BASE_DIR, "data", "Dist.xlsx")
+FLIGHT_FILE = os.path.join(BASE_DIR, "data", "flight.xlsx")
 
 def _safe_float(val, default=0.0):
     try:
@@ -692,11 +692,26 @@ if os.path.isdir(DATA_DIR):
     except Exception:
         class_names = []
 
-with open(INFO_FILE, "r", encoding="utf-8") as f:
-    monument_info = json.load(f)
+# Load monument info and history with error handling
+monument_info = {}
+monument_history = {}
+try:
+    if os.path.exists(INFO_FILE):
+        with open(INFO_FILE, "r", encoding="utf-8") as f:
+            monument_info = json.load(f)
+    else:
+        print(f"⚠️ Warning: {INFO_FILE} not found. Monument info will be empty.")
+except Exception as e:
+    print(f"⚠️ Error loading monument_info.json: {e}")
 
-with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-    monument_history = json.load(f)
+try:
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            monument_history = json.load(f)
+    else:
+        print(f"⚠️ Warning: {HISTORY_FILE} not found. Monument history will be empty.")
+except Exception as e:
+    print(f"⚠️ Error loading monument_history.json: {e}")
 
 transform = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -705,12 +720,22 @@ transform = transforms.Compose([
                          [0.229, 0.224, 0.225])
 ])
 
-model = models.resnet18(pretrained=False)
-# Force number of classes to match training
-model.fc = torch.nn.Linear(model.fc.in_features, 80)  # trained with 80 classes
-model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-model.to(DEVICE)
-model.eval()
+# Load model with error handling
+model = None
+try:
+    if os.path.exists(MODEL_PATH):
+        model = models.resnet18(pretrained=False)
+        # Force number of classes to match training
+        model.fc = torch.nn.Linear(model.fc.in_features, 80)  # trained with 80 classes
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+        model.to(DEVICE)
+        model.eval()
+        print("✅ Monument detection model loaded successfully.")
+    else:
+        print(f"⚠️ Warning: Model file {MODEL_PATH} not found. Monument detection will not work.")
+except Exception as e:
+    print(f"⚠️ Error loading monument model: {e}")
+    model = None
 
 # ----------------------------
 # Helper function
@@ -732,18 +757,37 @@ def call_n8n_ai_agent(monument_name):
 # ----------------------------
 @app.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
-    image_bytes = await file.read()
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    image = transform(image).unsqueeze(0).to(DEVICE)
+    if model is None:
+        return {
+            "monument": "Unknown",
+            "description": "Model not loaded. Please check server logs.",
+            "old_image": None,
+            "new_image": None,
+            "timeline": [],
+        }
+    
+    try:
+        image_bytes = await file.read()
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = transform(image).unsqueeze(0).to(DEVICE)
 
-    with torch.no_grad():
-        outputs = model(image)
-        _, predicted = torch.max(outputs, 1)
+        with torch.no_grad():
+            outputs = model(image)
+            _, predicted = torch.max(outputs, 1)
 
-    if class_names:
-        monument_name = class_names[predicted.item()]
-    else:
-        monument_name = "Unknown"
+        if class_names:
+            monument_name = class_names[predicted.item()]
+        else:
+            monument_name = "Unknown"
+    except Exception as e:
+        print(f"Error in monument prediction: {e}")
+        return {
+            "monument": "Unknown",
+            "description": f"Error processing image: {str(e)}",
+            "old_image": None,
+            "new_image": None,
+            "timeline": [],
+        }
 
     description = monument_info.get(monument_name, "No information available.")
 
