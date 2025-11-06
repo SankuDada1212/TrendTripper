@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Upload,
   Image as ImageIcon,
@@ -6,19 +6,48 @@ import {
   MapPin,
   Calendar,
   Info,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveSearch } from "@/lib/api";
 
 const API_BASE = "http://localhost:8000";
 
 const Discover = () => {
+  const { token, isAuthenticated, loadUserData } = useAuth();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [searchHistory, setSearchHistory] = useState<any[]>([]);
+
+  // Load saved searches on mount and when auth changes
+  useEffect(() => {
+    const loadData = async () => {
+      if (isAuthenticated && token) {
+        try {
+          const data = await loadUserData();
+          console.log("Discover - Loaded user data:", data);
+          if (data && data.searches && data.searches.length > 0) {
+            setSearchHistory(data.searches);
+            // Show the most recent search if available
+            const latestSearch = data.searches[0];
+            if (latestSearch && latestSearch.data) {
+              setResult(latestSearch.data);
+              toast.success(`Loaded your last search: ${latestSearch.monument || 'Monument'}`);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load search history:", err);
+        }
+      }
+    };
+    loadData();
+  }, [isAuthenticated, token]);
 
   // 🔹 Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +87,21 @@ const Discover = () => {
 
       const fullData = { ...res.data, ...infoRes.data };
       setResult(fullData);
+      
+      // Save search to backend if authenticated
+      if (isAuthenticated && token) {
+        saveSearch(token, { monument: fullData.monument, ...fullData }).then(() => {
+          console.log("Search saved successfully");
+          // Refresh search history
+          loadUserData().then((data) => {
+            if (data && data.searches) {
+              setSearchHistory(data.searches);
+            }
+          });
+        }).catch((err) => {
+          console.error("Failed to save search:", err);
+        });
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to identify monument. Please try again.");
@@ -272,6 +316,44 @@ const Discover = () => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Search History */}
+        {isAuthenticated && searchHistory.length > 0 && (
+          <Card className="card-glass mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Your Search History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {searchHistory.map((search, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                    onClick={() => {
+                      if (search.data) {
+                        setResult(search.data);
+                        toast.success(`Loaded: ${search.monument}`);
+                      }
+                    }}
+                  >
+                    <div>
+                      <p className="font-semibold">{search.monument}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {search.data?.description?.substring(0, 100)}...
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      View
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

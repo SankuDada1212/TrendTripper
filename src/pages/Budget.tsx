@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
-import { IndianRupee, Users, Plus, Download, BarChart3, AlertTriangle, Award } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { IndianRupee, Users, Plus, Download, BarChart3, AlertTriangle, Award, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveBudgetData, getUserData, deleteBudgetTrip } from "@/lib/api";
 
 type TripMeta = {
   budget: number;
@@ -23,10 +25,73 @@ type Expense = {
 };
 
 const Budget = () => {
+  const { token, isAuthenticated, loadUserData } = useAuth();
+  
   // Trip management state
   const [trips, setTrips] = useState<Record<string, TripMeta>>({});
   const [selectedTrip, setSelectedTrip] = useState<string>("");
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load user data on mount and when auth changes
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      if (isAuthenticated && token) {
+        try {
+          const data = await loadUserData();
+          console.log("Budget - Loaded user data:", data);
+          if (data) {
+            const loadedTrips = data.trips || {};
+            const loadedExpenses = data.expenses || [];
+            
+            if (Object.keys(loadedTrips).length > 0 || loadedExpenses.length > 0) {
+              setTrips(loadedTrips);
+              setExpenses(loadedExpenses);
+              
+              if (Object.keys(loadedTrips).length > 0) {
+                // Select the first trip or most recent one
+                const tripNames = Object.keys(loadedTrips);
+                setSelectedTrip(tripNames[0]);
+                toast.success(`Loaded ${tripNames.length} trip(s) and ${loadedExpenses.length} expense(s)`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load budget data:", err);
+          toast.error("Failed to load your budget data. Please refresh the page.");
+        }
+      } else {
+        // Clear data if not authenticated
+        setTrips({});
+        setExpenses([]);
+        setSelectedTrip("");
+      }
+      setLoading(false);
+    };
+    loadData();
+  }, [isAuthenticated, token]);
+
+  // Auto-save when data changes (but not during initial load)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      setInitialLoadComplete(true);
+    }
+  }, [loading, isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && token && initialLoadComplete && (Object.keys(trips).length > 0 || expenses.length > 0)) {
+      const saveTimeout = setTimeout(() => {
+        saveBudgetData(token, trips, expenses).then(() => {
+          console.log("Budget data auto-saved");
+        }).catch((err) => {
+          console.error("Failed to save budget data:", err);
+        });
+      }, 1000); // Debounce saves
+      return () => clearTimeout(saveTimeout);
+    }
+  }, [trips, expenses, token, isAuthenticated, initialLoadComplete]);
 
   // Create / update trip form
   const [tripName, setTripName] = useState("");
@@ -75,12 +140,33 @@ const Budget = () => {
       toast.error("Add at least one category with a limit");
       return;
     }
-    setTrips(prev => ({
-      ...prev,
-      [tripName.trim()]: { budget, categories, categoryBudgets: { ...categoryBudgetsInput }, numPeople: people },
-    }));
+    const newTrip: TripMeta = { budget, categories, categoryBudgets: { ...categoryBudgetsInput }, numPeople: people };
+    const updatedTrips = { ...trips, [tripName.trim()]: newTrip };
+    setTrips(updatedTrips);
     setSelectedTrip(tripName.trim());
+    
+    // Clear form
+    setTripName("");
+    setTripBudgetInput("");
+    setTripPeopleInput("");
+    setCategoryBudgetsInput({});
+    setCategorySelect("");
+    setCategoryLimitInput("");
+    
     toast.success(`Saved trip '${tripName.trim()}'`);
+    
+    // Save to backend immediately if authenticated
+    if (isAuthenticated && token) {
+      saveBudgetData(token, updatedTrips, expenses).then(() => {
+        console.log("Trip saved successfully to database");
+        toast.success("Trip saved to your account!");
+      }).catch((err) => {
+        console.error("Failed to save trip:", err);
+        toast.error("Failed to save trip. Please try again.");
+      });
+    } else {
+      toast.warning("Please login to save your trip");
+    }
   };
 
   const handleAddExpense = () => {
@@ -112,8 +198,19 @@ const Budget = () => {
       amount: amount,
       timestamp: new Date().toISOString(),
     };
-    setExpenses(prev => [...prev, newExpense]);
+    const updatedExpenses = [...expenses, newExpense];
+    setExpenses(updatedExpenses);
     toast.success(`Logged ₹${amount.toLocaleString()} → ${expCategory}`);
+    
+    // Save to backend immediately if authenticated
+    if (isAuthenticated && token) {
+      saveBudgetData(token, trips, updatedExpenses).then(() => {
+        console.log("Expense saved successfully to database");
+      }).catch((err) => {
+        console.error("Failed to save expense:", err);
+        toast.error("Failed to save expense. Please try again.");
+      });
+    }
   };
 
   const exportCsv = () => {
@@ -151,6 +248,14 @@ const Budget = () => {
     URL.revokeObjectURL(url);
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center">Loading your budget data...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
@@ -160,7 +265,10 @@ const Budget = () => {
             <IndianRupee className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold mb-4">Budget Planner</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">Create trips, log expenses, and track budget health.</p>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Create trips, log expenses, and track budget health.
+            {isAuthenticated && <span className="block text-sm mt-2 text-green-600">✓ Your data is being saved automatically</span>}
+          </p>
         </div>
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Create / Manage Trip */}
@@ -230,6 +338,47 @@ const Budget = () => {
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
+                  {selectedTrip && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                      onClick={async () => {
+                        const tripToDelete = selectedTrip;
+                        if (window.confirm(`Are you sure you want to delete the trip "${tripToDelete}"? This will also delete all expenses for this trip.`)) {
+                          if (isAuthenticated && token) {
+                            try {
+                              await deleteBudgetTrip(token, tripToDelete);
+                              // Remove from local state
+                              const updatedTrips = { ...trips };
+                              delete updatedTrips[tripToDelete];
+                              setTrips(updatedTrips);
+                              
+                              // Remove expenses for this trip
+                              const updatedExpenses = expenses.filter(e => e.trip !== tripToDelete);
+                              setExpenses(updatedExpenses);
+                              
+                              // Clear selection
+                              setSelectedTrip("");
+                              
+                              toast.success(`Trip "${tripToDelete}" deleted successfully`);
+                              
+                              // Save updated data
+                              await saveBudgetData(token, updatedTrips, updatedExpenses);
+                            } catch (err: any) {
+                              console.error("Failed to delete trip:", err);
+                              toast.error(err.message || "Failed to delete trip. Please try again.");
+                            }
+                          } else {
+                            toast.error("Please login to delete trips");
+                          }
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Trip
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>

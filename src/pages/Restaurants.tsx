@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveRestaurantSearch, saveBooking, saveRestaurantFavorite, unsaveRestaurantFavorite } from "@/lib/api";
+import { toast } from "sonner";
 
 type PlaceResult = {
 	name: string;
@@ -97,6 +101,7 @@ async function geoapifyFetchPlaces(lat: number, lon: number, radiusKm: number, a
 }
 
 const Restaurants = () => {
+	const { token, isAuthenticated, loadUserData } = useAuth();
 	const apiKey = (import.meta as any).env?.VITE_GEOAPIFY_KEY as string | undefined;
 	const [query, setQuery] = useState("");
 	const [city, setCity] = useState("Dwarka Gujarat");
@@ -106,6 +111,60 @@ const Restaurants = () => {
 	const [results, setResults] = useState<PlaceResult[]>([]);
 	const [saved, setSaved] = useState<PlaceResult[]>([]);
 	const [bookingFor, setBookingFor] = useState<number | null>(null);
+	const [savedBookings, setSavedBookings] = useState<any[]>([]);
+	const [savedFavorites, setSavedFavorites] = useState<PlaceResult[]>([]);
+
+	// Load saved restaurant searches and bookings when auth changes
+	useEffect(() => {
+		const loadData = async () => {
+			if (isAuthenticated && token) {
+				try {
+					const data = await loadUserData();
+					console.log("Restaurants - Loaded user data:", data);
+					if (data) {
+						// Load restaurant searches
+						if (data.restaurants && data.restaurants.length > 0) {
+							const latest = data.restaurants[0];
+							if (latest.results && latest.results.length > 0) {
+								setResults(latest.results);
+								if (latest.search_params) {
+									setQuery(latest.search_params.query || "");
+									setCity(latest.search_params.city || city);
+									setFoodPref(latest.search_params.foodPref || "Any");
+									setRadiusKm(latest.search_params.radiusKm || 5);
+								}
+								toast.success(`Loaded ${latest.results.length} saved restaurant result(s)`);
+							}
+						}
+						
+						// Load restaurant bookings from general bookings
+						if (data.bookings) {
+							const restaurantBookings = data.bookings.filter((b: any) => 
+								b.type === "restaurant" || (b.booking_data && b.booking_data.restaurant_name)
+							);
+							setSavedBookings(restaurantBookings);
+							if (restaurantBookings.length > 0) {
+								toast.success(`Loaded ${restaurantBookings.length} saved restaurant booking(s)`);
+							}
+						}
+						
+						// Load saved favorite restaurants
+						if (data.saved_restaurants && data.saved_restaurants.length > 0) {
+							const favorites = data.saved_restaurants.map((sr: any) => sr.restaurant_data);
+							setSavedFavorites(favorites);
+							setSaved(favorites); // Also set to saved state
+							if (favorites.length > 0) {
+								toast.success(`Loaded ${favorites.length} saved favorite restaurant(s)`);
+							}
+						}
+					}
+				} catch (err) {
+					console.error("Failed to load saved restaurants:", err);
+				}
+			}
+		};
+		loadData();
+	}, [isAuthenticated, token]);
 
 	const mood = useMemo(() => detectContextFromQuery(query), [query]);
 
@@ -137,7 +196,18 @@ const Restaurants = () => {
 				return { name, addr, lat: plat, lon: plon, score: total, vibe: generateVibeSummary(name) };
 			});
 			computed.sort((a, b) => b.score - a.score);
-			setResults(computed.slice(0, MAX_RESULTS));
+			const finalResults = computed.slice(0, MAX_RESULTS);
+			setResults(finalResults);
+			
+			// Save search to backend if authenticated
+			if (isAuthenticated && token) {
+				saveRestaurantSearch(token, {
+					search_params: { query, city, foodPref, radiusKm },
+					results: finalResults
+				}).catch((err) => {
+					console.error("Failed to save restaurant search:", err);
+				});
+			}
 		} finally {
 			setIsLoading(false);
 		}
@@ -146,7 +216,12 @@ const Restaurants = () => {
 	return (
 		<div className="container mx-auto px-4 py-10">
 			<div className="max-w-3xl mx-auto">
-				<h1 className="text-3xl font-bold mb-2">🧠 Trend Tripper — Mood-Based Restaurant Finder 🍽️</h1>
+				<div className="text-center mb-8 animate-fade-in">
+					<h1 className="text-4xl font-bold mb-4">🍽️ Discover Restaurants</h1>
+					<p className="text-lg text-muted-foreground">
+						Find the perfect dining experience based on your mood and preferences
+					</p>
+				</div>
 
 
 				<Card className="mb-8">
@@ -216,7 +291,37 @@ const Restaurants = () => {
 							<CardContent className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
 								<div className="text-sm text-muted-foreground">{r.addr}</div>
 								<div className="flex items-center gap-2">
-									<Button variant="secondary" onClick={() => setSaved((s) => (s.find((x) => x.name === r.name) ? s : [...s, r]))}>⭐ Save</Button>
+									<Button 
+										variant="secondary" 
+										onClick={async () => {
+											const isAlreadySaved = saved.find((x) => x.name === r.name);
+											if (isAlreadySaved) {
+												// Unsave
+												setSaved((s) => s.filter((x) => x.name !== r.name));
+												if (isAuthenticated && token) {
+													unsaveRestaurantFavorite(token, r.name).catch((err) => {
+														console.error("Failed to unsave restaurant:", err);
+													});
+												}
+												toast.info(`Removed ${r.name} from favorites`);
+											} else {
+												// Save
+												setSaved((s) => [...s, r]);
+												if (isAuthenticated && token) {
+													saveRestaurantFavorite(token, r.name, r).then(() => {
+														toast.success(`Saved ${r.name} to favorites!`);
+													}).catch((err) => {
+														console.error("Failed to save restaurant:", err);
+														toast.error("Failed to save restaurant");
+													});
+												} else {
+													toast.warning("Please login to save restaurants");
+												}
+											}
+										}}
+									>
+										{saved.find((x) => x.name === r.name) ? "⭐ Saved" : "⭐ Save"}
+									</Button>
 									<Button onClick={() => setBookingFor(idx)}>📅 Book</Button>
 								</div>
 							</CardContent>
@@ -241,7 +346,41 @@ const Restaurants = () => {
 										</div>
 									</div>
 									<div className="pt-3">
-										<Button onClick={() => setBookingFor(null)}>Confirm Booking</Button>
+										<Button onClick={async () => {
+											if (isAuthenticated && token) {
+												try {
+													// Save restaurant booking
+													const bookingInfo = {
+														restaurant_name: r.name,
+														restaurant_address: r.addr,
+														booking_date: (document.getElementById("date") as HTMLInputElement)?.value,
+														booking_time: (document.getElementById("time") as HTMLInputElement)?.value,
+														guests: parseInt((document.getElementById("guests") as HTMLInputElement)?.value || "2"),
+														guest_name: (document.getElementById("name") as HTMLInputElement)?.value,
+													};
+													// Save as a booking
+													await saveBooking(token, {
+														type: "restaurant",
+														booking_data: bookingInfo,
+														created_at: new Date().toISOString()
+													});
+													toast.success("Restaurant booking saved!");
+													setBookingFor(null);
+													// Refresh bookings
+													const data = await loadUserData();
+													if (data && data.bookings) {
+														const restaurantBookings = data.bookings.filter((b: any) => 
+															b.type === "restaurant" || (b.booking_data && b.booking_data.restaurant_name)
+														);
+														setSavedBookings(restaurantBookings);
+													}
+												} catch (err) {
+													toast.error("Failed to save booking. Please try again.");
+												}
+											} else {
+												toast.error("Please login to save bookings");
+											}
+										}}>Confirm Booking</Button>
 									</div>
 								</CardContent>
 							)}
@@ -249,16 +388,82 @@ const Restaurants = () => {
 					))}
 				</div>
 
-				{/* Sidebar-like saved spots summary */}
-				{saved.length > 0 && (
-					<div className="mt-10">
-						<h2 className="text-xl font-semibold mb-2">⭐ My Saved Spots</h2>
-						<ul className="list-disc pl-5 text-sm text-muted-foreground">
-							{saved.map((s) => (
-								<li key={s.name}>{s.name}</li>
-							))}
-						</ul>
-					</div>
+				{/* Saved Favorite Restaurants */}
+				{isAuthenticated && saved.length > 0 && (
+					<Card className="mt-10">
+						<CardHeader>
+							<CardTitle>⭐ My Saved Favorite Restaurants</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-3">
+								{saved.map((s, idx) => (
+									<div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+										<div className="flex-1">
+											<h3 className="font-semibold">{s.name}</h3>
+											<p className="text-sm text-muted-foreground">{s.addr}</p>
+											{s.vibe && (
+												<Badge variant="secondary" className="mt-1 text-xs">{s.vibe}</Badge>
+											)}
+										</div>
+										<div className="flex items-center gap-2">
+											{s.lat != null && s.lon != null && (
+												<a 
+													className="text-primary text-sm" 
+													href={`https://www.google.com/maps/place/${s.lat},${s.lon}`} 
+													target="_blank" 
+													rel="noreferrer"
+												>
+													📍 Map
+												</a>
+											)}
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={async () => {
+													setSaved((prev) => prev.filter((x) => x.name !== s.name));
+													if (isAuthenticated && token) {
+														await unsaveRestaurantFavorite(token, s.name);
+														toast.success(`Removed ${s.name} from favorites`);
+													}
+												}}
+												className="text-destructive hover:text-destructive"
+											>
+												Remove
+											</Button>
+										</div>
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Saved Restaurant Bookings */}
+				{isAuthenticated && savedBookings.length > 0 && (
+					<Card className="mt-10">
+						<CardHeader>
+							<CardTitle>📅 Your Restaurant Bookings</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-3">
+								{savedBookings.map((booking, idx) => {
+									const b = booking.booking_data || booking;
+									return (
+										<div key={idx} className="p-3 border rounded-lg">
+											<h3 className="font-semibold">{b.restaurant_name || "Restaurant"}</h3>
+											<p className="text-sm text-muted-foreground">{b.restaurant_address || ""}</p>
+											<div className="mt-2 text-sm">
+												<p><strong>Date:</strong> {b.booking_date || "N/A"}</p>
+												<p><strong>Time:</strong> {b.booking_time || "N/A"}</p>
+												<p><strong>Guests:</strong> {b.guests || "N/A"}</p>
+												<p><strong>Name:</strong> {b.guest_name || "N/A"}</p>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						</CardContent>
+					</Card>
 				)}
 			</div>
 		</div>

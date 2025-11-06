@@ -1,10 +1,15 @@
 // API configuration and helper functions
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 interface ApiResponse<T> {
   data: T | null;
   error: string | null;
   loading: boolean;
+}
+
+// Get auth token from localStorage
+function getAuthToken(): string | null {
+  return localStorage.getItem('auth_token');
 }
 
 // Generic API call wrapper
@@ -13,16 +18,32 @@ export async function apiCall<T>(
   options?: RequestInit
 ): Promise<T> {
   try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string> || {}),
+    };
+    
+    // Add auth token if available and not already in headers
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
       ...options,
+      headers,
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorText = await response.text();
+      let errorMessage = `API Error: ${response.statusText}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorJson.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     return await response.json();
@@ -176,4 +197,174 @@ export async function bookingConfirm(payment_mode: string) {
 
 export async function bookingHistory() {
   return apiCall(`/booking/history`);
+}
+
+// Authentication API
+export async function registerUser(username: string, email: string, password: string) {
+  return apiCall(`/api/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({ username, email, password }),
+  });
+}
+
+export async function loginUser(username: string, password: string) {
+  return apiCall(`/api/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function getCurrentUser(token: string) {
+  return apiCall(`/api/auth/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+// User Data API
+export async function getUserData(token: string) {
+  return apiCall(`/api/user/data`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+export async function saveBudgetData(token: string, trips: any, expenses: any[]) {
+  return apiCall(`/api/user/budget`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ trips, expenses }),
+  });
+}
+
+export async function saveBooking(token: string, bookingData: any) {
+  return apiCall(`/api/user/bookings`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(bookingData),
+  });
+}
+
+export async function getUserBookings(token: string) {
+  return apiCall(`/api/user/bookings`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+}
+
+export async function saveSearch(token: string, searchData: any) {
+  return apiCall(`/api/user/searches`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(searchData),
+  });
+}
+
+export async function saveMoodAnalysis(token: string, moodData: any) {
+  return apiCall(`/api/user/mood`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(moodData),
+  });
+}
+
+export async function saveRestaurantSearch(token: string, restaurantData: any) {
+  return apiCall(`/api/user/restaurants`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(restaurantData),
+  });
+}
+
+export async function saveEvent(token: string, eventData: any) {
+  return apiCall(`/api/user/events`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(eventData),
+  });
+}
+
+export async function saveHotel(token: string, hotelData: any) {
+  return apiCall(`/api/user/hotels`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(hotelData),
+  });
+}
+
+export async function bookHotel(token: string, bookingData: any) {
+  return apiCall(`/api/user/hotels/book`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(bookingData),
+  });
+}
+
+export async function deleteHotelBooking(token: string, bookingId: string) {
+  return apiCall(`/api/user/hotels/booking/delete`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ booking_id: bookingId }),
+  });
+}
+
+export async function deleteBudgetTrip(token: string, tripName: string) {
+  return apiCall(`/api/user/budget/trip/delete`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ trip_name: tripName }),
+  });
+}
+
+export async function deleteEventFromItinerary(token: string, eventId: string) {
+  return apiCall(`/api/user/events/delete`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ event_id: eventId }),
+  });
+}
+
+export async function saveRestaurantFavorite(token: string, restaurantName: string, restaurantData: any) {
+  return apiCall(`/api/user/restaurants/save`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ restaurant_name: restaurantName, restaurant_data: restaurantData }),
+  });
+}
+
+export async function unsaveRestaurantFavorite(token: string, restaurantName: string) {
+  return apiCall(`/api/user/restaurants/unsave`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ restaurant_name: restaurantName }),
+  });
 }

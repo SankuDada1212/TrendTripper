@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, MapPin, IndianRupee, Filter, Plus, Download, Image as ImageIcon } from "lucide-react";
+import { Calendar, MapPin, IndianRupee, Filter, Plus, Download, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { getEvents } from "@/lib/api";
 import { mockEvents } from "@/lib/mockData";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveEvent, deleteEventFromItinerary } from "@/lib/api";
 
 // Artist image mapping - using Unsplash for artist photos
 const getArtistImage = (artistName: string): string => {
@@ -90,6 +92,7 @@ const getArtistImage = (artistName: string): string => {
 };
 
 const Events = () => {
+  const { token, isAuthenticated, loadUserData } = useAuth();
   const [events, setEvents] = useState<any[]>(mockEvents);
   const [loading, setLoading] = useState(false);
   const [loadInfo, setLoadInfo] = useState<string>("Using mock events (fallback)");
@@ -116,6 +119,32 @@ const Events = () => {
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Load saved itinerary when auth changes
+  useEffect(() => {
+    const loadItinerary = async () => {
+      if (isAuthenticated && token) {
+        try {
+          const data = await loadUserData();
+          console.log("Events - Loaded user data:", data);
+          if (data && data.events) {
+            // Load events that were added to itinerary
+            const itineraryEvents = data.events
+              .filter((e: any) => e.action === "added_to_itinerary")
+              .map((e: any) => e.event_data)
+              .filter((e: any) => e); // Remove null/undefined
+            if (itineraryEvents.length > 0) {
+              setItinerary(itineraryEvents);
+              toast.success(`Loaded ${itineraryEvents.length} saved event(s) from your itinerary`);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load saved events:", err);
+        }
+      }
+    };
+    loadItinerary();
+  }, [isAuthenticated, token]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -314,9 +343,65 @@ const Events = () => {
         toast.info("Already in your trip");
         return prev;
       }
+      const newItinerary = [...prev, ev];
       toast.success(`Added ${ev.name} to your itinerary`);
-      return [...prev, ev];
+      
+      // Save event to backend if authenticated
+      if (isAuthenticated && token) {
+        saveEvent(token, {
+          event_id: ev.id || ev.name,
+          event_data: ev,
+          action: "added_to_itinerary"
+        }).then(() => {
+          console.log("Event added to itinerary and saved");
+        }).catch((err) => {
+          console.error("Failed to save event:", err);
+          toast.error("Failed to save. Please try again.");
+        });
+      }
+      
+      return newItinerary;
     });
+  };
+
+  const removeFromItinerary = async (ev: any) => {
+    const eventId = ev.id || ev.name;
+    setItinerary((prev) => prev.filter((e) => (e.id || e.name) !== eventId));
+    
+    // Delete from backend if authenticated
+    if (isAuthenticated && token) {
+      try {
+        await deleteEventFromItinerary(token, eventId);
+        toast.success(`Removed ${ev.name} from your itinerary`);
+      } catch (err: any) {
+        console.error("Failed to delete event:", err);
+        toast.error("Failed to remove event. Please try again.");
+        // Reload itinerary on error
+        const data = await loadUserData();
+        if (data && data.events) {
+          const itineraryEvents = data.events
+            .filter((e: any) => e.action === "added_to_itinerary")
+            .map((e: any) => e.event_data)
+            .filter((e: any) => e);
+          setItinerary(itineraryEvents);
+        }
+      }
+    } else {
+      toast.success(`Removed ${ev.name} from your itinerary`);
+    }
+  };
+  
+  const handleEventView = (ev: any) => {
+    // Save event view to backend if authenticated
+    if (isAuthenticated && token) {
+      saveEvent(token, {
+        event_id: ev.id || ev.name,
+        event_data: ev,
+        action: "viewed"
+      }).catch((err) => {
+        console.error("Failed to save event view:", err);
+      });
+    }
   };
 
   const downloadCsv = () => {
@@ -557,6 +642,7 @@ const Events = () => {
               key={`${event.id || event.name || index}-${index}`}
               className="card-hover overflow-hidden group animate-fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
+              onMouseEnter={() => handleEventView(event)}
             >
               <div className="relative h-48 overflow-hidden">
                 <img
@@ -614,7 +700,27 @@ const Events = () => {
                   <Button className="w-full" variant="outline" onClick={() => addToItinerary(event)}>
                     <Plus className="w-4 h-4 mr-2"/> Add to Trip
                   </Button>
-                  <Button className="w-full gradient-hero text-white">Book Now</Button>
+                  <Button 
+                    className="w-full gradient-hero text-white"
+                    onClick={() => {
+                      handleEventView(event);
+                      if (isAuthenticated && token) {
+                        saveEvent(token, {
+                          event_id: event.id || event.name,
+                          event_data: event,
+                          action: "booked"
+                        }).then(() => {
+                          toast.success("Event booking saved!");
+                        }).catch(() => {
+                          toast.error("Failed to save booking");
+                        });
+                      } else {
+                        toast.error("Please login to save bookings");
+                      }
+                    }}
+                  >
+                    Book Now
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -639,14 +745,26 @@ const Events = () => {
                       <th className="py-2 px-4">Name</th>
                       <th className="py-2 px-4">City/Venue</th>
                       <th className="py-2 px-4">Date</th>
+                      <th className="py-2 px-4">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {itinerary.map((e, idx) => (
-                      <tr key={idx} className="border-t">
-                        <td className="py-2 px-4">{e.name}</td>
+                      <tr key={idx} className="border-t hover:bg-accent/50">
+                        <td className="py-2 px-4 font-medium">{e.name}</td>
                         <td className="py-2 px-4">{e.location}</td>
                         <td className="py-2 px-4">{new Date(e.date).toLocaleString()}</td>
+                        <td className="py-2 px-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFromItinerary(e)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

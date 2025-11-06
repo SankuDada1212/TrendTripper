@@ -1,5 +1,7 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
 import torch
 from torchvision import transforms, models, datasets
 from PIL import Image
@@ -10,6 +12,10 @@ import csv
 import pandas as pd
 import datetime as dt
 from random import choice
+import hashlib
+import secrets
+import jwt
+from datetime import datetime, timedelta
 
 # Load .env automatically if present
 try:
@@ -47,10 +53,18 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Use your frontend URL here for production
+    allow_origins=[
+        "http://localhost:8080",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 IMG_SIZE = 128
@@ -67,6 +81,13 @@ EVENTS_CSV = os.path.join(BASE_DIR, "data", "events.csv")
 # SOS Config (env-driven)
 # ----------------------------
 SOS_DB_FILE = os.path.join(BASE_DIR, "offline_sos.db")
+USER_DB_FILE = os.path.join(BASE_DIR, "users.db")
+# Use a fixed SECRET_KEY for development (should be in .env for production)
+# This ensures tokens remain valid across server restarts
+SECRET_KEY = os.environ.get("SECRET_KEY", "trend-tripper-secret-key-change-in-production-2024")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
 SOS_CONTACTS = os.environ.get(
     "SOS_CONTACTS",
     ""  # Set via environment variable
@@ -304,6 +325,247 @@ def recommend_places_osm(address: str, mood: str = "NEUTRAL", food_pref: str = "
         })
     
     return final_results[:10]
+
+# ----------------------------
+# Authentication & User Database Setup
+# ----------------------------
+security = HTTPBearer()
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA256 (for simplicity; use bcrypt in production)"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash"""
+    return hash_password(plain_password) == hashed_password
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def init_user_db():
+    """Initialize user database with all tables"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Users table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Add is_admin column if it doesn't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+        conn.commit()
+        print("✅ Added is_admin column to users table")
+    except sqlite3.OperationalError:
+        # Column already exists, ignore
+        pass
+    
+    # Check if admin user exists, if not create one
+    cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+    admin_user = cursor.fetchone()
+    if not admin_user:
+        admin_password_hash = hash_password("Sanket@2507")  # Default admin password
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
+            ("admin", "admin@trendtripper.com", admin_password_hash, 1)
+        )
+        conn.commit()
+        print("✅ Admin user created: username='admin', password='Sanket@2507'")
+    else:
+        # Update existing admin password
+        admin_password_hash = hash_password("Sanket@2507")
+        cursor.execute(
+            "UPDATE users SET password_hash = ? WHERE username = 'admin' AND is_admin = 1",
+            (admin_password_hash,)
+        )
+        conn.commit()
+        print("✅ Admin password updated: username='admin', password='Sanket@2507'")
+    
+    # User searches (monument searches)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_searches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            monument_name TEXT,
+            search_data TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User budget trips
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_budget_trips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            trip_name TEXT NOT NULL,
+            budget REAL NOT NULL,
+            categories TEXT,
+            category_budgets TEXT,
+            num_people INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User expenses
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            trip_name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL,
+            user_id_expense INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User bookings
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            booking_data TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User mood analysis
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_mood_analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            text_input TEXT,
+            mood_result TEXT,
+            recommendations TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User restaurant searches
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_restaurant_searches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            search_params TEXT,
+            results TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User saved restaurants (for favorites)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_saved_restaurants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            restaurant_name TEXT NOT NULL,
+            restaurant_data TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, restaurant_name)
+        )
+    """)
+    
+    # User events
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            event_id TEXT,
+            event_data TEXT,
+            action TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # User hotels
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_hotels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            hotel_id TEXT,
+            hotel_data TEXT,
+            action TEXT,
+            booking_data TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current user from JWT token"""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+        # Convert string back to int
+        try:
+            user_id = int(user_id_str)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user ID in token"
+            )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except (jwt.InvalidSignatureError, jwt.DecodeError, jwt.InvalidTokenError) as e:
+        # Catch JWT-specific errors
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication credentials: {str(e)}"
+        )
+    except Exception as e:
+        # Catch any other unexpected errors
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication error: {str(e)}"
+        )
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, is_admin FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    return {"id": user[0], "username": user[1], "email": user[2], "is_admin": bool(user[3])}
 
 # ----------------------------
 # SOS Helpers (mirror Streamlit logic)
@@ -805,6 +1067,7 @@ def booking_history():
 @app.on_event("startup")
 def _init_startup():
     init_sos_db()
+    init_user_db()
 
 
 @app.post("/api/sos")
@@ -1012,3 +1275,761 @@ def api_get_hotel_cities():
     except Exception as e:
         print(f"Error in api_get_hotel_cities: {e}")
         return {"cities": INDIAN_CITIES, "status": "error"}
+
+# ----------------------------
+# Authentication Endpoints
+# ----------------------------
+class UserRegister(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class DeleteTripRequest(BaseModel):
+    trip_name: str
+
+class DeleteBookingRequest(BaseModel):
+    booking_id: str
+
+class DeleteEventRequest(BaseModel):
+    event_id: str
+
+@app.post("/api/auth/register")
+def register_user(user_data: UserRegister):
+    """Register a new user"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Check if username or email already exists
+    cursor.execute("SELECT id FROM users WHERE username = ? OR email = ?", (user_data.username, user_data.email))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail="Username or email already exists")
+    
+    # Create user
+    password_hash = hash_password(user_data.password)
+    cursor.execute(
+        "INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
+        (user_data.username, user_data.email, password_hash, 0)
+    )
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    # Create access token (sub must be a string)
+    access_token = create_access_token(data={"sub": str(user_id)})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": user_id, "username": user_data.username, "email": user_data.email, "is_admin": False}
+    }
+
+@app.post("/api/auth/login")
+def login_user(user_data: UserLogin):
+    """Login user and return JWT token"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, password_hash, is_admin FROM users WHERE username = ?", (user_data.username,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user or not verify_password(user_data.password, user[3]):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    
+    # Create access token (sub must be a string)
+    access_token = create_access_token(data={"sub": str(user[0])})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": user[0], "username": user[1], "email": user[2], "is_admin": bool(user[4])}
+    }
+
+@app.get("/api/auth/me")
+def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """Get current user information"""
+    return current_user
+
+def get_admin_user(current_user: dict = Depends(get_current_user)):
+    """Verify user is admin"""
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+@app.get("/api/admin/users")
+def get_all_users(admin_user: dict = Depends(get_admin_user)):
+    """Get all users (admin only)"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, is_admin, created_at FROM users ORDER BY created_at DESC")
+    users = cursor.fetchall()
+    conn.close()
+    
+    return {
+        "users": [
+            {
+                "id": u[0],
+                "username": u[1],
+                "email": u[2],
+                "is_admin": bool(u[3]),
+                "created_at": u[4]
+            }
+            for u in users
+        ]
+    }
+
+@app.get("/api/admin/user/{user_id}/data")
+def get_user_data_admin(user_id: int, admin_user: dict = Depends(get_admin_user)):
+    """Get all data for a specific user (admin only)"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get user info
+    cursor.execute("SELECT id, username, email, is_admin FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get all user data (same as get_all_user_data but for specific user_id)
+    # Get trips
+    cursor.execute(
+        "SELECT trip_name, budget, categories, category_budgets, num_people FROM user_budget_trips WHERE user_id = ?",
+        (user_id,)
+    )
+    trips_rows = cursor.fetchall()
+    trips = {}
+    for row in trips_rows:
+        trips[row[0]] = {
+            "budget": row[1],
+            "categories": json.loads(row[2]) if row[2] else [],
+            "categoryBudgets": json.loads(row[3]) if row[3] else {},
+            "numPeople": row[4]
+        }
+    
+    # Get expenses
+    cursor.execute(
+        "SELECT trip_name, category, amount, user_id_expense, created_at FROM user_expenses WHERE user_id = ? ORDER BY created_at",
+        (user_id,)
+    )
+    expenses_rows = cursor.fetchall()
+    expenses = []
+    for row in expenses_rows:
+        expenses.append({
+            "trip": row[0],
+            "category": row[1],
+            "amount": row[2],
+            "userId": row[3] or 0,
+            "timestamp": row[4]
+        })
+    
+    # Get bookings
+    cursor.execute(
+        "SELECT booking_data, created_at FROM user_bookings WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    )
+    bookings_rows = cursor.fetchall()
+    bookings = [json.loads(row[0]) for row in bookings_rows]
+    
+    # Get searches
+    cursor.execute(
+        "SELECT monument_name, search_data FROM user_searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    searches_rows = cursor.fetchall()
+    searches = []
+    for row in searches_rows:
+        searches.append({
+            "monument": row[0],
+            "data": json.loads(row[1]) if row[1] else {}
+        })
+    
+    # Get mood analysis
+    cursor.execute(
+        "SELECT text_input, mood_result, recommendations FROM user_mood_analysis WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    mood_rows = cursor.fetchall()
+    moods = []
+    for row in mood_rows:
+        moods.append({
+            "text_input": row[0],
+            "mood_result": json.loads(row[1]) if row[1] else {},
+            "recommendations": json.loads(row[2]) if row[2] else []
+        })
+    
+    # Get restaurant searches
+    cursor.execute(
+        "SELECT search_params, results FROM user_restaurant_searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    restaurant_rows = cursor.fetchall()
+    restaurants = []
+    for row in restaurant_rows:
+        restaurants.append({
+            "search_params": json.loads(row[0]) if row[0] else {},
+            "results": json.loads(row[1]) if row[1] else []
+        })
+    
+    # Get saved restaurants
+    cursor.execute(
+        "SELECT restaurant_name, restaurant_data FROM user_saved_restaurants WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    saved_restaurant_rows = cursor.fetchall()
+    saved_restaurants = []
+    for row in saved_restaurant_rows:
+        saved_restaurants.append({
+            "restaurant_name": row[0],
+            "restaurant_data": json.loads(row[1]) if row[1] else {}
+        })
+    
+    # Get events
+    cursor.execute(
+        "SELECT event_id, event_data, action FROM user_events WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    event_rows = cursor.fetchall()
+    events = []
+    for row in event_rows:
+        events.append({
+            "event_id": row[0],
+            "event_data": json.loads(row[1]) if row[1] else {},
+            "action": row[2]
+        })
+    
+    # Get hotels
+    cursor.execute(
+        "SELECT hotel_id, hotel_data, action, booking_data FROM user_hotels WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    hotel_rows = cursor.fetchall()
+    hotels = []
+    for row in hotel_rows:
+        hotels.append({
+            "hotel_id": row[0],
+            "hotel_data": json.loads(row[1]) if row[1] else {},
+            "action": row[2],
+            "booking_data": json.loads(row[3]) if row[3] else None
+        })
+    
+    conn.close()
+    
+    return {
+        "user": {
+            "id": user[0],
+            "username": user[1],
+            "email": user[2],
+            "is_admin": bool(user[3])
+        },
+        "trips": trips,
+        "expenses": expenses,
+        "bookings": bookings,
+        "searches": searches,
+        "moods": moods,
+        "restaurants": restaurants,
+        "saved_restaurants": saved_restaurants,
+        "events": events,
+        "hotels": hotels
+    }
+
+@app.post("/api/admin/user/{user_id}/delete")
+def delete_user_admin(user_id: int, admin_user: dict = Depends(get_admin_user)):
+    """Delete a user and all their data (admin only)"""
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Check if user exists
+    cursor.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete user (cascade will delete all related data)
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": f"User '{user[1]}' and all their data deleted successfully"}
+
+# ----------------------------
+# User Data Persistence Endpoints
+# ----------------------------
+@app.get("/api/user/data")
+def get_all_user_data(current_user: dict = Depends(get_current_user)):
+    """Get all user data (trips, expenses, bookings, searches)"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get trips
+    cursor.execute(
+        "SELECT trip_name, budget, categories, category_budgets, num_people FROM user_budget_trips WHERE user_id = ?",
+        (user_id,)
+    )
+    trips_rows = cursor.fetchall()
+    trips = {}
+    for row in trips_rows:
+        trips[row[0]] = {
+            "budget": row[1],
+            "categories": json.loads(row[2]) if row[2] else [],
+            "categoryBudgets": json.loads(row[3]) if row[3] else {},
+            "numPeople": row[4]
+        }
+    
+    # Get expenses
+    cursor.execute(
+        "SELECT trip_name, category, amount, user_id_expense, created_at FROM user_expenses WHERE user_id = ? ORDER BY created_at",
+        (user_id,)
+    )
+    expenses_rows = cursor.fetchall()
+    expenses = []
+    for row in expenses_rows:
+        expenses.append({
+            "trip": row[0],
+            "category": row[1],
+            "amount": row[2],
+            "userId": row[3] or 0,
+            "timestamp": row[4]
+        })
+    
+    # Get bookings
+    cursor.execute(
+        "SELECT booking_data, created_at FROM user_bookings WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    )
+    bookings_rows = cursor.fetchall()
+    bookings = []
+    for row in bookings_rows:
+        bookings.append(json.loads(row[0]))
+    
+    # Get searches
+    cursor.execute(
+        "SELECT monument_name, search_data FROM user_searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    searches_rows = cursor.fetchall()
+    searches = []
+    for row in searches_rows:
+        searches.append({
+            "monument": row[0],
+            "data": json.loads(row[1]) if row[1] else {}
+        })
+    
+    # Get mood analysis
+    cursor.execute(
+        "SELECT text_input, mood_result, recommendations FROM user_mood_analysis WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    mood_rows = cursor.fetchall()
+    moods = []
+    for row in mood_rows:
+        moods.append({
+            "text_input": row[0],
+            "mood_result": json.loads(row[1]) if row[1] else {},
+            "recommendations": json.loads(row[2]) if row[2] else []
+        })
+    
+    # Get restaurant searches
+    cursor.execute(
+        "SELECT search_params, results FROM user_restaurant_searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    restaurant_rows = cursor.fetchall()
+    restaurants = []
+    for row in restaurant_rows:
+        restaurants.append({
+            "search_params": json.loads(row[0]) if row[0] else {},
+            "results": json.loads(row[1]) if row[1] else []
+        })
+    
+    # Get saved restaurants (favorites)
+    cursor.execute(
+        "SELECT restaurant_name, restaurant_data FROM user_saved_restaurants WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    saved_restaurant_rows = cursor.fetchall()
+    saved_restaurants = []
+    for row in saved_restaurant_rows:
+        saved_restaurants.append({
+            "restaurant_name": row[0],
+            "restaurant_data": json.loads(row[1]) if row[1] else {}
+        })
+    
+    # Get events
+    cursor.execute(
+        "SELECT event_id, event_data, action FROM user_events WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    event_rows = cursor.fetchall()
+    events = []
+    for row in event_rows:
+        events.append({
+            "event_id": row[0],
+            "event_data": json.loads(row[1]) if row[1] else {},
+            "action": row[2]
+        })
+    
+    # Get hotels
+    cursor.execute(
+        "SELECT hotel_id, hotel_data, action, booking_data FROM user_hotels WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        (user_id,)
+    )
+    hotel_rows = cursor.fetchall()
+    hotels = []
+    for row in hotel_rows:
+        hotels.append({
+            "hotel_id": row[0],
+            "hotel_data": json.loads(row[1]) if row[1] else {},
+            "action": row[2],
+            "booking_data": json.loads(row[3]) if row[3] else None
+        })
+    
+    conn.close()
+    
+    return {
+        "trips": trips,
+        "expenses": expenses,
+        "bookings": bookings,
+        "searches": searches,
+        "moods": moods,
+        "restaurants": restaurants,
+        "saved_restaurants": saved_restaurants,
+        "events": events,
+        "hotels": hotels
+    }
+
+@app.post("/api/user/budget")
+def save_budget_data(payload: dict, current_user: dict = Depends(get_current_user)):
+    """Save budget trips and expenses"""
+    user_id = current_user["id"]
+    trips = payload.get("trips", {})
+    expenses = payload.get("expenses", [])
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Delete old trips for this user (to replace with new ones)
+    cursor.execute("DELETE FROM user_budget_trips WHERE user_id = ?", (user_id,))
+    
+    # Save/update trips
+    for trip_name, trip_data in trips.items():
+        cursor.execute(
+            """INSERT INTO user_budget_trips 
+               (user_id, trip_name, budget, categories, category_budgets, num_people)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                trip_name,
+                trip_data.get("budget", 0),
+                json.dumps(trip_data.get("categories", [])),
+                json.dumps(trip_data.get("categoryBudgets", {})),
+                trip_data.get("numPeople", 1)
+            )
+        )
+    
+    # Delete old expenses for this user (to replace with new ones)
+    cursor.execute("DELETE FROM user_expenses WHERE user_id = ?", (user_id,))
+    
+    # Save expenses
+    for expense in expenses:
+        cursor.execute(
+            "INSERT INTO user_expenses (user_id, trip_name, category, amount, user_id_expense) VALUES (?, ?, ?, ?, ?)",
+            (
+                user_id,
+                expense.get("trip", ""),
+                expense.get("category", ""),
+                expense.get("amount", 0),
+                expense.get("userId", 0)
+            )
+        )
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Budget data saved"}
+
+@app.post("/api/user/budget/trip/delete")
+def delete_budget_trip(payload: DeleteTripRequest, current_user: dict = Depends(get_current_user)):
+    """Delete a budget trip and its expenses"""
+    user_id = current_user["id"]
+    trip_name = payload.trip_name
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Delete trip
+    cursor.execute(
+        "DELETE FROM user_budget_trips WHERE user_id = ? AND trip_name = ?",
+        (user_id, trip_name)
+    )
+    
+    # Delete all expenses for this trip
+    cursor.execute(
+        "DELETE FROM user_expenses WHERE user_id = ? AND trip_name = ?",
+        (user_id, trip_name)
+    )
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Trip '{trip_name}' deleted successfully"}
+
+@app.post("/api/user/bookings")
+def save_booking(booking_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save a booking"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_bookings (user_id, booking_data) VALUES (?, ?)",
+        (user_id, json.dumps(booking_data))
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Booking saved"}
+
+@app.get("/api/user/bookings")
+def get_user_bookings(current_user: dict = Depends(get_current_user)):
+    """Get all user bookings"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT booking_data FROM user_bookings WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    bookings = [json.loads(row[0]) for row in rows]
+    return {"history": bookings}
+
+@app.post("/api/user/searches")
+def save_search(search_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save a monument search"""
+    user_id = current_user["id"]
+    monument_name = search_data.get("monument", "")
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_searches (user_id, monument_name, search_data) VALUES (?, ?, ?)",
+        (user_id, monument_name, json.dumps(search_data))
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Search saved"}
+
+@app.post("/api/user/mood")
+def save_mood_analysis(mood_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save mood analysis result"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_mood_analysis (user_id, text_input, mood_result, recommendations) VALUES (?, ?, ?, ?)",
+        (
+            user_id,
+            mood_data.get("text_input", ""),
+            json.dumps(mood_data.get("mood_result", {})),
+            json.dumps(mood_data.get("recommendations", []))
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Mood analysis saved"}
+
+@app.post("/api/user/restaurants")
+def save_restaurant_search(restaurant_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save restaurant search"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_restaurant_searches (user_id, search_params, results) VALUES (?, ?, ?)",
+        (
+            user_id,
+            json.dumps(restaurant_data.get("search_params", {})),
+            json.dumps(restaurant_data.get("results", []))
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Restaurant search saved"}
+
+@app.post("/api/user/restaurants/save")
+def save_restaurant_favorite(restaurant_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save a restaurant as favorite"""
+    user_id = current_user["id"]
+    restaurant_name = restaurant_data.get("restaurant_name")
+    if not restaurant_name:
+        raise HTTPException(status_code=400, detail="restaurant_name is required")
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT OR REPLACE INTO user_saved_restaurants (user_id, restaurant_name, restaurant_data) 
+           VALUES (?, ?, ?)""",
+        (
+            user_id,
+            restaurant_name,
+            json.dumps(restaurant_data.get("restaurant_data", {}))
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Restaurant saved to favorites"}
+
+@app.post("/api/user/restaurants/unsave")
+def unsave_restaurant_favorite(restaurant_data: dict, current_user: dict = Depends(get_current_user)):
+    """Remove a restaurant from favorites"""
+    user_id = current_user["id"]
+    restaurant_name = restaurant_data.get("restaurant_name")
+    if not restaurant_name:
+        raise HTTPException(status_code=400, detail="restaurant_name is required")
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM user_saved_restaurants WHERE user_id = ? AND restaurant_name = ?",
+        (user_id, restaurant_name)
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Restaurant removed from favorites"}
+
+@app.post("/api/user/events")
+def save_event(event_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save event interaction (viewed, liked, etc.)"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_events (user_id, event_id, event_data, action) VALUES (?, ?, ?, ?)",
+        (
+            user_id,
+            event_data.get("event_id", ""),
+            json.dumps(event_data.get("event_data", {})),
+            event_data.get("action", "viewed")
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Event saved"}
+
+@app.post("/api/user/events/delete")
+def delete_event_from_itinerary(payload: DeleteEventRequest, current_user: dict = Depends(get_current_user)):
+    """Delete an event from itinerary"""
+    user_id = current_user["id"]
+    event_id = payload.event_id
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Delete events with "added_to_itinerary" action for this event_id
+    cursor.execute(
+        "DELETE FROM user_events WHERE user_id = ? AND event_id = ? AND action = 'added_to_itinerary'",
+        (user_id, event_id)
+    )
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Event removed from itinerary"}
+
+@app.post("/api/user/hotels")
+def save_hotel(hotel_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save hotel interaction (viewed, booked, etc.)"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO user_hotels (user_id, hotel_id, hotel_data, action, booking_data) VALUES (?, ?, ?, ?, ?)",
+        (
+            user_id,
+            hotel_data.get("hotel_id", ""),
+            json.dumps(hotel_data.get("hotel_data", {})),
+            hotel_data.get("action", "viewed"),
+            json.dumps(hotel_data.get("booking_data", {})) if hotel_data.get("booking_data") else None
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Hotel data saved"}
+
+@app.post("/api/user/hotels/book")
+def book_hotel(booking_data: dict, current_user: dict = Depends(get_current_user)):
+    """Book a hotel"""
+    user_id = current_user["id"]
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Save hotel booking
+    cursor.execute(
+        "INSERT INTO user_hotels (user_id, hotel_id, hotel_data, action, booking_data) VALUES (?, ?, ?, ?, ?)",
+        (
+            user_id,
+            booking_data.get("hotel_id", ""),
+            json.dumps(booking_data.get("hotel_data", {})),
+            "booked",
+            json.dumps(booking_data)
+        )
+    )
+    
+    # Also save as a booking
+    cursor.execute(
+        "INSERT INTO user_bookings (user_id, booking_data) VALUES (?, ?)",
+        (user_id, json.dumps({
+            "type": "hotel",
+            "booking_data": booking_data,
+            "created_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }))
+    )
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Hotel booked successfully", "booking": booking_data}
+
+@app.post("/api/user/hotels/booking/delete")
+def delete_hotel_booking(payload: DeleteBookingRequest, current_user: dict = Depends(get_current_user)):
+    """Delete a hotel booking"""
+    user_id = current_user["id"]
+    booking_id = payload.booking_id
+    
+    conn = sqlite3.connect(USER_DB_FILE)
+    cursor = conn.cursor()
+    
+    # Find the booking by hotel_id (which is the booking_id parameter)
+    # We'll need to check both hotel_id and booking_data to find the exact booking
+    cursor.execute(
+        "SELECT id, hotel_id, booking_data FROM user_hotels WHERE user_id = ? AND hotel_id = ? AND action = 'booked'",
+        (user_id, booking_id)
+    )
+    booking = cursor.fetchone()
+    
+    if not booking:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Delete from user_hotels
+    cursor.execute(
+        "DELETE FROM user_hotels WHERE user_id = ? AND id = ?",
+        (user_id, booking[0])
+    )
+    
+    # Also try to delete from user_bookings (find by hotel_id in booking_data)
+    cursor.execute(
+        "SELECT id, booking_data FROM user_bookings WHERE user_id = ?",
+        (user_id,)
+    )
+    bookings = cursor.fetchall()
+    for booking_row in bookings:
+        try:
+            booking_data = json.loads(booking_row[1])
+            if booking_data.get("type") == "hotel" and booking_data.get("booking_data", {}).get("hotel_id") == booking_id:
+                cursor.execute("DELETE FROM user_bookings WHERE id = ?", (booking_row[0],))
+                break
+        except:
+            continue
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Hotel booking deleted successfully"}

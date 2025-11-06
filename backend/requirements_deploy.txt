@@ -1,0 +1,42 @@
+# Production Requirements for Trend Tripper Backend
+# Use this file for deployment (cleaner than requirements.txt)
+
+# Web Framework
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+python-multipart==0.0.20
+
+# Environment & Config
+python-dotenv==1.0.0
+
+# Authentication
+PyJWT==2.10.1
+
+# HTTP Requests
+requests==2.32.5
+httpx==0.28.1
+
+# Data Processing
+pandas==2.3.2
+numpy==1.26.4
+
+# Image Processing
+pillow==11.3.0
+
+# Machine Learning (if needed for monument detection)
+# torch==2.7.1
+# torchvision==0.22.1
+# Note: These are large - only include if you need monument detection
+
+# SMS/Communication
+twilio==9.8.3
+
+# Geocoding
+geopy==2.4.1
+
+# Database (SQLite is built-in, but if you want PostgreSQL)
+# psycopg2-binary==2.9.9
+
+# CORS
+# Already included in FastAPI
+

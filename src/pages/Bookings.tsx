@@ -7,10 +7,14 @@ import {
   bookingConfirm,
   bookingHistory,
 } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveBooking, getUserBookings } from '@/lib/api';
 
 type Vehicles = Record<string, { fare_per_km: number; icon: string; min_fare: number; platform_fee?: number }>; 
 
 const Bookings = () => {
+  const { token, isAuthenticated } = useAuth();
+  
   const [config, setConfig] = useState<{
     states: Record<string, string[]>;
     vehicles: Vehicles;
@@ -48,10 +52,20 @@ const Bookings = () => {
         console.log('Config received:', cfg);
         setConfig(cfg as any);
         
-        console.log('Fetching booking history...');
-        const h = await bookingHistory();
-        console.log('History received:', h);
-        setHistory((h as any)?.history || []);
+        // Load bookings from user's saved data if authenticated, otherwise from global history
+        if (isAuthenticated && token) {
+          try {
+            const userBookings = await getUserBookings(token);
+            setHistory((userBookings as any)?.history || []);
+          } catch {
+            // Fallback to global history if user bookings fail
+            const h = await bookingHistory();
+            setHistory((h as any)?.history || []);
+          }
+        } else {
+          const h = await bookingHistory();
+          setHistory((h as any)?.history || []);
+        }
       } catch (err) {
         console.error('Error loading booking data:', err);
         setError(`Failed to load data: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -59,7 +73,7 @@ const Bookings = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [isAuthenticated, token]);
 
   const cities = useMemo(() => config?.states?.[selectedState] || [], [config, selectedState]);
   const originPlaces = useMemo(() => (city ? config?.places?.[city] || [] : []), [config, city]);
@@ -98,8 +112,30 @@ const Bookings = () => {
   const onConfirmPayment = async () => {
     const res = await bookingConfirm(paymentMode);
     if ((res as any)?.saved) {
-      const h = await bookingHistory();
-      setHistory((h as any)?.history || []);
+      const bookingData = (res as any).saved;
+      
+      // Save to user's account if authenticated
+      if (isAuthenticated && token) {
+        try {
+          await saveBooking(token, bookingData);
+        } catch (err) {
+          console.error('Failed to save booking to user account:', err);
+        }
+      }
+      
+      // Update history
+      if (isAuthenticated && token) {
+        try {
+          const userBookings = await getUserBookings(token);
+          setHistory((userBookings as any)?.history || []);
+        } catch {
+          const h = await bookingHistory();
+          setHistory((h as any)?.history || []);
+        }
+      } else {
+        const h = await bookingHistory();
+        setHistory((h as any)?.history || []);
+      }
     }
     setModalOpen(false);
   };
