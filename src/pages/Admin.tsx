@@ -66,7 +66,8 @@ const Admin = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8000/api/admin/users", {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
@@ -85,7 +86,8 @@ const Admin = () => {
   const loadUserData = async (userId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/admin/user/${userId}/data`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/admin/user/${userId}/data`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
@@ -105,7 +107,8 @@ const Admin = () => {
   const deleteUser = async () => {
     if (!userToDelete || !token) return;
     try {
-      const response = await fetch(`http://localhost:8000/api/admin/user/${userToDelete.id}/delete`, {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/admin/user/${userToDelete.id}/delete`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

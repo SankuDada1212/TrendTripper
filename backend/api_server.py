@@ -54,6 +54,10 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Production frontend
+        "https://trendtripper-2.onrender.com",
+        "https://trendtripper-2.onrender.com/",
+        # Local development
         "http://localhost:8080",
         "http://localhost:5173",
         "http://localhost:3000",

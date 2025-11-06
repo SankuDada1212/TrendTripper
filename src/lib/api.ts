@@ -58,7 +58,7 @@ export async function identifyMonument(image: File) {
   const formData = new FormData();
   formData.append('file', image);
 
-  const response = await fetch(`http://127.0.0.1:8000/predict/`, {
+  const response = await fetch(`${API_BASE_URL}/predict/`, {
     method: 'POST',
     body: formData,
   });
